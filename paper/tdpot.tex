@@ -69,6 +69,9 @@
 \ArticleNo{23}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\newcommand*{\pred}{f}
+\newcommand*{\comb}{f}
+
 \begin{document}
 
 \maketitle
@@ -79,9 +82,38 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci
 \end{abstract}
 
 \section{Introduction}
+\subsection{Related Work}
 \section{Preliminaries}
+We consider directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
+We use $uv$ as a short notation for an edge from vertex $u$ to vertex $v$.
+Each edge $e \in E$ has a travel time function $\pred_e : \mathbb{Z} \to \mathbb{Z}^{\geq 0}$ which maps a departure time $\tau$ to a predicted travel time $\pred_e(\tau)$.
+We assume that all travel time functions adhere to the \emph{first-in first-out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
+Formally stated this means $\tau + \pred(\tau) \leq \tau + \epsilon + \pred(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
+With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{TODO}.
+
+% traffic model
+Edges may further have a currently observed live travel time $w_e$ which we assume to be valid until a point in time $\tau_e^{\operatorname{end}}$.
+We assume that the traffic predictions are a conservative estimate and that live-traffic will always have slower travel times due to accidents and other traffic incidents.
+Thus, we define the combined travel time function of an edge as follows:
+$\comb_e(\tau) = \max(\pred_e(\tau), \min(w_e, \pred_e(\tau_e^{\operatorname{end}}) + \tau_e^{\operatorname{end}} - \tau ))$.
+
+Our goal is to find the path $P = (s=v_1,\dots,v_k=t)$ that minimizes $\comb_P(\tau)$
+
+% phases
+\subsection{A*}
+% feasibility
+% lower-bound
+\subsection{CCH}
+% customizations
+\subsection{Lazy RPHAST}
+
 \section{Algorithms}
+\subsection{Multi-Metric Potential}
+\subsection{Interval-Minimum Potential}
+\subsection{Adjustments for Live-Traffic}
+\subsection{Metric Reduction}
 \section{Evaluation}
+% data
 \section{Conclusion}
 
 % \section{Typesetting instructions -- Summary}
