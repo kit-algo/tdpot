@@ -155,15 +155,15 @@ namespace "exp" do
           sh "cargo run --release --bin multi_metric_pre -- #{graph}"
           sh "cargo run --release --bin multi_metric_live_customization -- #{graph} #{metric[1]} #{metric[0]}"
 
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform interval_min_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform multi_metric_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
 
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} queries/1h interval_min_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h interval_min_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h multi_metric_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h lower_bound_cch_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
 
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} queries/rank interval_min_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank interval_min_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank multi_metric_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank lower_bound_cch_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
 
