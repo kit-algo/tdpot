@@ -67,26 +67,26 @@ namespace "prep" do
 
   file "#{osm_ger}#{lite[0]}" => osm_ger do
     Dir.chdir "code/rust_road_router" do
-      sh "cargo run --release --bin mapbox_to_live_array -- #{osm_ger} #{lite_live_dir} #{lite}"
+      sh "cargo run --release --bin mapbox_to_live_array -- #{osm_ger} #{lite_live_dir} #{lite[0]}"
     end
   end
   file "#{osm_ger}#{heavy[0]}" => osm_ger do
     Dir.chdir "code/rust_road_router" do
-      sh "cargo run --release --bin mapbox_to_live_array -- #{osm_ger} #{heavy_live_dir} #{heavy}"
+      sh "cargo run --release --bin mapbox_to_live_array -- #{osm_ger} #{heavy_live_dir} #{heavy[0]}"
     end
   end
   file "#{ptv_eur}#{default[0]}" do
     Dir.chdir "code/rust_road_router" do
-      sh "cargo run --release --bin ptv_ti_to_live -- #{ptv_eur} #{ptv_live_csv}"
+      sh "cargo run --release --bin ptv_ti_to_live -- #{ptv_eur} #{ptv_live_csv[0]}"
     end
   end
 
   graphs.each do |graph, _|
     file graph + "queries" => graph do
       Dir.chdir "code/rust_road_router" do
-        sh "mkdir -p #{graph}/queries/1h"
-        sh "mkdir -p #{graph}/queries/rank"
-        sh "mkdir -p #{graph}/queries/uniform"
+        sh "mkdir -p #{graph}queries/1h"
+        sh "mkdir -p #{graph}queries/rank"
+        sh "mkdir -p #{graph}queries/uniform"
         sh "cargo run --release --bin generate_rank_queries -- #{graph}"
         sh "cargo run --release --bin generate_rand_queries -- #{graph}"
         sh "cargo run --release --bin generate_1h_queries -- #{graph}"
