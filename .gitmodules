@@ -4,3 +4,5 @@
 [submodule "code/rust_road_router"]
 	path = code/rust_road_router
 	url = https://github.com/kit-algo/rust_road_router.git
+[submodule "rust_road_router"]
+	url = i11git:/Projects/bmw_routing_engine.git
