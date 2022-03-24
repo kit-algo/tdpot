@@ -65,17 +65,17 @@ namespace "prep" do
      end
   end
 
-  file "#{osm_ger}#{lite}" => osm_ger do
+  file "#{osm_ger}#{lite[0]}" => osm_ger do
     Dir.chdir "code/rust_road_router" do
       sh "cargo run --release --bin mapbox_to_live_array -- #{osm_ger} #{lite_live_dir} #{lite}"
     end
   end
-  file "#{osm_ger}#{heavy}" => osm_ger do
+  file "#{osm_ger}#{heavy[0]}" => osm_ger do
     Dir.chdir "code/rust_road_router" do
       sh "cargo run --release --bin mapbox_to_live_array -- #{osm_ger} #{heavy_live_dir} #{heavy}"
     end
   end
-  file "#{ptv_eur}#{default}" do
+  file "#{ptv_eur}#{default[0]}" do
     Dir.chdir "code/rust_road_router" do
       sh "cargo run --release --bin ptv_ti_to_live -- #{ptv_eur} #{ptv_live_csv}"
     end
