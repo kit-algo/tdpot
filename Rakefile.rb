@@ -146,7 +146,7 @@ namespace "exp" do
     end
   end
 
-  task queries_live: ["#{exp_dir}/rand_live", "#{exp_dir}/1h_live" ,"#{exp_dir}/rank_live"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.map { |g, _| g + "queries" } + graphs.flat_map { |g, metrics| metrics.map { |m| g + m } } do
+  task queries_live: ["#{exp_dir}/rand_live", "#{exp_dir}/1h_live", "#{exp_dir}/rank_live"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.map { |g, _| g + "queries" } + graphs.flat_map { |g, metrics| metrics.map { |m| g + m[0] } } do
     Dir.chdir "code/rust_road_router" do
       sh "cargo build --release --bin live_and_predicted_queries"
       graphs.each do |graph, metrics|
@@ -193,7 +193,7 @@ namespace "exp" do
     end
   end
 
-  task customization: ["#{exp_dir}/customization"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, metrics| metrics.map { |m| g + m } } do
+  task customization: ["#{exp_dir}/customization"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, metrics| metrics.map { |m| g + m[0] } } do
     Dir.chdir "code/rust_road_router" do
       graphs.each do |graph, metrics|
         metrics.each do |metric|
