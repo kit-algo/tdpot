@@ -139,21 +139,24 @@ namespace "exp" do
       sh "cargo build --release --bin predicted_queries"
       graphs.each do |graph, _|
         sh "cargo run --release --bin interval_min_build -- #{graph}"
-        sh "cargo run --release --bin multi_metric_pre -- #{graph}"
-
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
-        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
-        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
-
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h interval_min_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
-        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
-        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h lower_bound_cch_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
-
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/rank interval_min_pot > #{exp_dir}/rank/$(date --iso-8601=seconds).json"
+        sh "rm -r #{graph}interval_min_pot"
+
+        sh "cargo run --release --bin multi_metric_pre -- #{graph}"
+        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
+        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/rank multi_metric_pot > #{exp_dir}/rank/$(date --iso-8601=seconds).json"
+        sh "rm -r #{graph}multi_metric_pre"
+        sh "rm -r #{graph}multi_metric_pot"
+
+        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
+        sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h lower_bound_cch_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/rank lower_bound_cch_pot > #{exp_dir}/rank/$(date --iso-8601=seconds).json"
 
         sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform zero > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
+
       end
     end
   end
@@ -164,22 +167,25 @@ namespace "exp" do
       graphs.each do |graph, metrics|
         metrics.each do |metric|
           sh "cargo run --release --bin interval_min_live_customization -- #{graph} #{metric[1]} #{metric[0]}"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform interval_min_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h interval_min_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank interval_min_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}interval_min_pot"
+
           sh "cargo run --release --bin multi_metric_pre -- #{graph}"
           sh "cargo run --release --bin multi_metric_live_customization -- #{graph} #{metric[1]} #{metric[0]}"
-
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform interval_min_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform multi_metric_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
-
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h interval_min_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h multi_metric_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h lower_bound_cch_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
-
-          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank interval_min_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank multi_metric_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}multi_metric_pre"
+          sh "rm -r #{graph}multi_metric_pot"
+
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h lower_bound_cch_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank lower_bound_cch_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
 
           sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform zero > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
+
         end
       end
     end
@@ -190,16 +196,21 @@ namespace "exp" do
       sh "cargo build --release --bin predicted_queries"
       graphs.each do |graph, _|
         [10, 20, 30, 40, 50, 60, 70, 80, 90].each do |k|
-          sh "cargo run --release --bin interval_min_reduction -- #{graph} #{k} customized_corridor_mins reduced_corridor_mins"
-          sh "cargo run --release --bin multi_metric_pre -- #{graph} multi_metric_pre multi_metric_pot #{k}"
-
           sh "mkdir #{exp_dir}/compression/#{k}" unless Dir.exist? "#{exp_dir}/compression/#{k}"
-          sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
-          sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
-
           sh "mkdir #{exp_dir}/compression_1h/#{k}" unless Dir.exist? "#{exp_dir}/compression_1h/#{k}"
+
+          sh "cargo run --release --bin interval_min_reduction -- #{graph} #{k} customized_corridor_mins reduced_corridor_mins"
+          sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h interval_min_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}interval_min_pot"
+          sh "rm -r #{graph}reduced_corridor_mins"
+
+          sh "cargo run --release --bin multi_metric_pre -- #{graph} multi_metric_pre multi_metric_pot #{k}"
+          sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}multi_metric_pre"
+          sh "rm -r #{graph}multi_metric_pot"
+
         end
       end
     end
