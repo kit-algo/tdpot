@@ -36,8 +36,8 @@ typical_file = "#{data_dir}/mapbox/typical-tuesday-cleaned.csv"
 ptv_live_csv = "#{data_dir}/ptv/smallEuropeTuesdayCarWithIncidentDuration_ti.csv"
 
 # SMALLER GRAPHS
-# osm_ger_src = 'https://download.geofabrik.de/europe/germany/baden-wuerttemberg-200101.osm.pbf'
-# osm_ger_src_file = "#{data_dir}/baden-wuerttemberg-200101.osm.pbf"
+# osm_ger_src = 'https://download.geofabrik.de/europe/germany/bremen-200101.osm.pbf'
+# osm_ger_src_file = "#{data_dir}/bremen-200101.osm.pbf"
 # ptv_eur = "#{data_dir}/ptv20-lux-car/"
 # ptv_live_csv = "#{data_dir}/ptv/luxTuesdayCarWithIncidentDuration_ti.csv"
 
