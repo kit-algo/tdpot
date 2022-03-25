@@ -197,8 +197,8 @@ namespace "exp" do
     Dir.chdir "code/rust_road_router" do
       graphs.each do |graph, metrics|
         metrics.each do |metric|
+          sh "cargo run --release --bin multi_metric_pre -- #{graph}"
           100.times do
-            sh "cargo run --release --bin multi_metric_pre -- #{graph}"
             sh "cargo run --release --bin multi_metric_live_customization -- #{graph} #{metric[1]} #{metric[0]} > #{exp_dir}/customization/$(date --iso-8601=seconds).json"
             sh "cargo run --release --bin interval_min_live_customization -- #{graph} #{metric[1]} #{metric[0]} > #{exp_dir}/customization/$(date --iso-8601=seconds).json"
           end
