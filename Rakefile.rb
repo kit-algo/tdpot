@@ -181,11 +181,11 @@ namespace "exp" do
           sh "cargo run --release --bin interval_min_reduction -- #{graph} #{k} customized_corridor_mins reduced_corridor_mins"
           sh "cargo run --release --bin multi_metric_pre -- #{graph} multi_metric_pre multi_metric_pot #{k}"
 
-          sh "mkdir #{exp_dir}/compression/#{k}"
+          sh "mkdir #{exp_dir}/compression/#{k}" unless Dir.exist? "#{exp_dir}/compression/#{k}"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
 
-          sh "mkdir #{exp_dir}/compression_1h/#{k}"
+          sh "mkdir #{exp_dir}/compression_1h/#{k}" unless Dir.exist? "#{exp_dir}/compression_1h/#{k}"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h interval_min_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
         end
