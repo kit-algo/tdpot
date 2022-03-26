@@ -77,7 +77,7 @@ namespace "prep" do
   end
   file "#{ptv_eur}#{default[0]}" do
     Dir.chdir "code/rust_road_router" do
-      sh "cargo run --release --bin ptv_ti_to_live -- #{ptv_eur} #{ptv_live_csv[0]}"
+      sh "cargo run --release --bin ptv_ti_to_live -- #{ptv_eur} #{ptv_live_csv}"
     end
   end
 
