@@ -121,7 +121,8 @@ end
 
 namespace "exp" do
   desc "Run all experiments"
-  task all: [:queries, :queries_live, :compression, :customization, :preprocessing]
+  task queries: [:queries_pred, :queries_live, :compression]
+  task all: [:queries, :customization, :preprocessing]
 
   directory "#{exp_dir}/rand"
   directory "#{exp_dir}/1h"
@@ -134,27 +135,32 @@ namespace "exp" do
   directory "#{exp_dir}/preprocessing"
   directory "#{exp_dir}/customization"
 
-  task queries: ["#{exp_dir}/rand", "#{exp_dir}/1h", "#{exp_dir}/rank"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform', 'rank'].map { |q| "#{g}queries/#{q}" } } do
+  task queries_pred: ["#{exp_dir}/rand", "#{exp_dir}/1h", "#{exp_dir}/rank"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform', 'rank'].map { |q| "#{g}queries/#{q}" } } do
     Dir.chdir "code/rust_road_router" do
       sh "cargo build --release --bin predicted_queries"
+      sh "cargo build --release --bin predicted_queries_no_topo"
       graphs.each do |graph, _|
         sh "cargo run --release --bin interval_min_build -- #{graph}"
+        sh "numactl -N 1 -m 1 target/release/predicted_queries_no_topo #{graph} queries/uniform interval_min_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h interval_min_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/rank interval_min_pot > #{exp_dir}/rank/$(date --iso-8601=seconds).json"
         sh "rm -r #{graph}interval_min_pot"
 
         sh "cargo run --release --bin multi_metric_pre -- #{graph}"
+        sh "numactl -N 1 -m 1 target/release/predicted_queries_no_topo #{graph} queries/uniform multi_metric_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/rank multi_metric_pot > #{exp_dir}/rank/$(date --iso-8601=seconds).json"
         sh "rm -r #{graph}multi_metric_pre"
         sh "rm -r #{graph}multi_metric_pot"
 
+        sh "numactl -N 1 -m 1 target/release/predicted_queries_no_topo #{graph} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h lower_bound_cch_pot > #{exp_dir}/1h/$(date --iso-8601=seconds).json"
         sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/rank lower_bound_cch_pot > #{exp_dir}/rank/$(date --iso-8601=seconds).json"
 
+        sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/predicted_queries_no_topo #{graph} queries/uniform zero > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform zero > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
 
       end
@@ -164,9 +170,11 @@ namespace "exp" do
   task queries_live: ["#{exp_dir}/rand_live", "#{exp_dir}/1h_live", "#{exp_dir}/rank_live"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform', 'rank'].map { |q| "#{g}queries/#{q}" } } + graphs.flat_map { |g, metrics| metrics.map { |m| g + m[0] } } do
     Dir.chdir "code/rust_road_router" do
       sh "cargo build --release --bin live_and_predicted_queries"
+      sh "cargo build --release --bin live_and_predicted_queries_no_topo"
       graphs.each do |graph, metrics|
         metrics.each do |metric|
           sh "cargo run --release --bin interval_min_live_customization -- #{graph} #{metric[1]} #{metric[0]}"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries_no_topo #{graph} #{metric[1]} #{metric[0]} queries/uniform interval_min_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform interval_min_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h interval_min_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank interval_min_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
@@ -174,16 +182,19 @@ namespace "exp" do
 
           sh "cargo run --release --bin multi_metric_pre -- #{graph}"
           sh "cargo run --release --bin multi_metric_live_customization -- #{graph} #{metric[1]} #{metric[0]}"
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries_no_topo #{graph} #{metric[1]} #{metric[0]} queries/uniform multi_metric_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform multi_metric_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h multi_metric_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank multi_metric_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
           sh "rm -r #{graph}multi_metric_pre"
           sh "rm -r #{graph}multi_metric_pot"
 
+          sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries_no_topo #{graph} #{metric[1]} #{metric[0]} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform lower_bound_cch_pot > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/1h lower_bound_cch_pot > #{exp_dir}/1h_live/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/rank lower_bound_cch_pot > #{exp_dir}/rank_live/$(date --iso-8601=seconds).json"
 
+          sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/live_and_predicted_queries_no_topo #{graph} #{metric[1]} #{metric[0]} queries/uniform zero > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform zero > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
 
         end
