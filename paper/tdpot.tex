@@ -81,8 +81,68 @@
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti. 
 \end{abstract}
 
+\newpage
+
 \section{Introduction}
+
+An important feature of modern routing applications and navigation devices is the integration of traffic information into routing decisions.
+The more comprehensive the considered traffic information, the better the suggested routes, the more accurate the predicted arrival times and ultimately, the more satisfied the users.
+For routing, we can distinguish between two aspects of traffic:
+On the one hand, there are \emph{predictable} traffic flows.
+For example certain highways will consistently have traffic jams on weekday afternoons due to commuters driving home.
+On the other hand, unexpected events such as accidents may also have significant influence on the \emph{current} traffic situation.
+While it may be sufficient to focus on the current traffic situation to answer short-range routing request, mid- and long-range queries require taking both types of traffic into account.
+% example with traffic jam now and in 300km?
+We therefore aim to provide routing algorithms which incorporate \emph{combined} predicted and live traffic information.
+
+A common approach for routing in road networks is to model the network as a directed graph where intersections become vertices and road segments become edges.
+With edge weights representing travel times, routing requests can be answered by solving the classical shortest path problem.
+When considering predicted traffic, edge weights can be modeled as functions of the daytime, which is commonly referred to as \emph{time-dependent} routing.
+Dijkstra's algorithm can be used to solve these problems exactly and, at least from a theoretical perspective, efficiently.
+However, on the continental-sized road networks used in modern routing applications, it may take seconds to answer mid- or long-range queries which is too slow for most practical applications.
+We therefore study algorithms to compute shortest paths significantly faster than Dijkstra's algorithm while retaining exactness.
+
+In this work, we utilize the A* algorithm for this.
+A* can be seen as an extension of Dijkstra's algorithm.
+Dijkstra's algorithm explores all vertices closer to the origin than the destination by utilizing a queue where vertices are ordered by their distance from the origin vertex.
+A* changes the order in which vertices are visited by adding an estimate of the remaining distance to the queue key, sometimes called \emph{heuristic} or \emph{potential}.
+The performance depends on the tightness of these estimates.
+The algorithmic core idea of this work are time-dependent potential functions, i.e.\ we obtain tighter estimates by taking the time a vertex is visited into account.
+
 \subsection{Related Work}
+
+Efficient and exact route planning in road networks has received a significant amount of research effort in the past decade.
+Since a comprehensive overview is beyond the scope of this paper, we refer to~\cite{TODO} for an overview.
+An approach that has proven quite effective is to exploit that road networks rarely change and usually many queries have to be answered on the same network.
+Thus, these queries can be accelerated by computing auxiliary data in an off-line preprocessing phase.
+
+A popular technique following this approach is \emph{Contraction Hierarchies} (CH).
+During the preprocessing vertices are heuristically ranked by importance (more important nodes are part of more shortest paths).
+Shortcut edges are inserted to skip over unimportant vertices.
+This allows for a very fast query where only few nodes are explored.
+On typical continental-sized benchmark instances, queries take well below a millisecond.
+\emph{Multi-Level Dijkstra} (MLD) is a similar approach which also utilizes shortcut edges but inserts them based on a multi-level partitioning.
+It achieves slightly slower query times around a millisecond.
+MLD is popular for being the first algorithm to support the concept of \emph{customizability} and therefore sometimes also referred by \emph{Customizable Route Planning} (CRP).
+The \emph{customization} is a second faster preprocessing phase which allows integrating arbitrary weight functions (or live-traffic updates the current weights) into the auxiliary data without rerunning the whole slow first preprocessing phase.
+The MLD customization takes a couple of seconds which allows running it every minute.
+CH was later generalized to support customizability as well which resulted in Customizable Contraction Hierachies (CCH).
+
+% TCH, CATCHUp, TDCRP, TDS (Shark?)
+
+% A* / ALT (dynamic, live, td)
+
+% CHPot
+
+\subsection{Contribution}
+
+% Introduce A* with TDPot
+% Introduce 2 TDPots
+% Show how to apply them to live traffic
+% Extensive eval
+% up to one order of mag over time independent pot
+% 2 orders of magnitude over dijkstra
+
 \section{Preliminaries}
 We consider directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
 We use $uv$ as a short notation for an edge from vertex $u$ to vertex $v$.
