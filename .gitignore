@@ -5,6 +5,8 @@ exp
 *.zip
 paper/tdpot.pdf
 
+.ipynb_checkpoints
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
