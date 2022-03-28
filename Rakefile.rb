@@ -88,7 +88,7 @@ namespace "prep" do
 
     file graph + "queries/1h" => graph do
       Dir.chdir "code/rust_road_router" do
-        sh "cargo run --release --bin generate_1h_queries -- #{graph}"
+        sh "cargo run --release --bin generate_1h_queries -- #{graph} 100000"
       end
     end
 
@@ -100,7 +100,7 @@ namespace "prep" do
 
     file graph + "queries/uniform" => graph do
       Dir.chdir "code/rust_road_router" do
-        sh "cargo run --release --bin generate_rand_queries -- #{graph}"
+        sh "cargo run --release --bin generate_rand_queries -- #{graph} 100000"
       end
     end
 
