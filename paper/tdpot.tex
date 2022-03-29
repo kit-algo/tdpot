@@ -157,6 +157,12 @@ However the reported query times are a above 100\,ms which we consider too slow 
 
 \subsection{Contribution}
 
+In this work, we introduce a time-dependent generalization of A* potentials.
+We then propose two efficient algorithms for such time-dependent A* potentials and discuss how to apply them to efficiently answer queries in a combined live and predicted traffic setting.
+An extensive evaluation confirms the applicability of our algorithms.
+Queries incorporating both predicted and the current traffic can usually be answered within few tenths of milliseconds.
+Live-traffic updates can be integrated within less than a minute.
+Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of magnitude and compared to a time-independent CH-Potential, we achieve a speed-up of up to an order of magnitude.
 % Introduce A* with TDPot
 % Introduce 2 TDPots
 % Show how to apply them to live traffic
