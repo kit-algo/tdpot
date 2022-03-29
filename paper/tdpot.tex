@@ -294,6 +294,54 @@ Running Lazy RPHAST on the customized weight function of this interval then yiel
 % Correctness
 
 \subsection{Interval-Minimum Potential}
+
+The \emph{Interval-Minimum Potential} is a time-dependent adaptation of the Lazy RPHAST algorithm.
+Where Lazy RPHAST has a single scalar (lower bound) weight for each edge, the Interval-Minimum Potential has a lower bound function.
+This allows for tighter lower bound estimates but introduces new challenges.
+First, computing an augmented CH graph with time-dependent travel time functions (even with only approximated lower bound functions) is difficult problem on its own an has been subject to study for entire articles~\cite{bgsv-mtdtt-13,swz-sfert-21}.
+We therefore utilize the existing CATCHUp algorithm~\cite{swz-sfert-21}.
+Second, storing the travel time functions of an augmented graph can be very expensive in terms of memory consumption.
+Also, the usual representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
+We therefore resort to a different representation and store functions as piecewise constant values in buckets of equal time.
+Third, evaluating the lower bound functions requires a time of evaluation.
+While we have a time for the vertex for which we compute the potential, Lazy RPHAST also needs a time for every recursive invocation.
+We therefore apply Lazy RPHAST a second time on a global upper and lower bound weight function to obtain an arrival interval at each vertex.
+
+\subparagraph{Preprocessing}
+The first step is the same as for the Multi-Metric Potential: performing the CCH preprocessing.
+Then, we perform a CATACHUp customization.
+This yields tight scalar upper and lower bounds as well as time-dependent unpacking information which allows to reconstruct the path represented by a shortcut for each point in time.
+The original CATCHUp customization algorithm does not output shortcut travel time functions.
+However, approximated functions are maintained throughout the customization.
+From these approximated functions, we extract the piecewise constant lower bound buckets for all edges in the augmented graph.
+
+\subparagraph{Update}
+As for the Multi-Metric Potential, we extract an upper bound weight function for the entire day valid with respect to both the predicted and the live traffic.
+We then run both the basic and the perfect customization algorithms for the upper bound without constructing a reduced augmented graph.
+Now, we remove all CCH edges, where the upper bound undercuts the scalar lower bound from the CATCHUp customization and prepare two graphs:
+One with the bucket-based time-dependent lower bound functions and another one with the scalar upper and lower bounds.
+The running time of this phase is again dominated by the construction of the reduced graphs and the adjustments discussed in the previous section are applicable, too.
+
+% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
+% reduced graph bounds
+% reduced graph buckets by predicted bounds
+% bound switching
+
+\subparagraph{Query}
+For the query, we build the potential with two instantiations of the Lazy RPHAST algorithm.
+The first one works on the graph with the scalar bounds and computes lower and upper bounds on the distance from the source vertex.
+The second one works on the graph with the bucket-based time-dependent lower bound functions.
+The second one uses the first one to determine arrival intervals at each vertex which are in turn used to evaluate outgoing edges.
+
+Choosing the right memory layout for the bucket weights is crucial for the performance of this algorithm.
+We do store all weights of a single bucket consecutively.
+Typically, only few buckets per edge are relevant, because the arrival intervals are relatively tight.
+Also, outgoing all edges of each vertex are evaluated consecutively.
+Thus, having their weights for the same bucket close to each other increases cache hits.
+
+% evaluation time metric pruning
+% correctness
+
 \subsection{Compression}
 \section{Evaluation}
 % data
