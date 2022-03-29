@@ -72,6 +72,17 @@
 \newcommand*{\pred}{f}
 \newcommand*{\comb}{f^*}
 \newcommand*{\opttt}{\mathcal{T}}
+\newcommand*{\dist}{\mathcal{D}}
+\newcommand*{\lb}{\mathcal{L}}
+
+\newcommand*{\tdep}{\tau^{\operatorname{dep}}}
+\newcommand*{\tmax}{\tau^{\max}}
+
+\newcommand*{\gchu}{G^{\uparrow}}
+\newcommand*{\gchd}{\overleftarrow{G^{\downarrow}}}
+
+\usepackage[algo2e,vlined]{algorithm2e}
+\usepackage{booktabs}
 
 \begin{document}
 
@@ -178,8 +189,8 @@ Each edge $e = uv \in E$ has a travel time function $\pred_e : \mathbb{Z} \to \m
 The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $\pred_P(\tau) = \pred_{v_1 v_2}(\tau) + \pred_{(v_2,\dots,v_k)}(\tau + \pred_{v_1 v_2}(\tau))$.
 In our implementation, travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day of predictions.
 We assume that all travel time functions adhere to the \emph{first-in first-out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
-% waiting?
 Formally stated this means $\tau + \pred(\tau) \leq \tau + \epsilon + \pred(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
+% TODO explain waiting?
 With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{or-tnp-89}.
 
 % traffic model
@@ -187,11 +198,12 @@ Edges may further have a currently observed live travel time $w_e$ and a point i
 We assume that the traffic predictions are a conservative estimate and that live-traffic will always have slower travel times due to accidents and other traffic incidents.
 Thus, we define the combined travel time function of an edge as follows:
 $\comb_e(\tau) = \max(\pred_e(\tau), \min(w_e, \pred_e(\tau_e^{\operatorname{end}}) + \tau_e^{\operatorname{end}} - \tau))$.
-% TODO talk about -1 segment, visualize
+% TODO talk about -1 segment
+% TODO visualize
 % TODO inf
 
-Our goal is given vertices $s$ and $t$ and an earliest departure $\tau^{\operatorname{dep}}$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb_P(\tau^{\operatorname{dep}})$.
-We refer to the travel time of this path as $\opttt(s,t,\tau^{\operatorname{dep}})$.
+Our goal is given vertices $s$ and $t$ and an earliest departure $\tdep$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb_P(\tdep)$.
+We refer to the travel time of this path as $\opttt(s,t,\tdep)$.
 
 \subsection{Application Model}
 
@@ -202,19 +214,86 @@ A preprocessing algorithm may use these inputs to precompute auxiliary data whic
 In the second \emph{update} phase, traffic weights are given for the current moment $\tau^{\operatorname{now}}$ and should be incorporated into the precomputed data within as little time as possible.
 This phase may be repeated frequently to adjust to the current state of traffic.
 We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
-During the third and final \emph{query} phase, many shortest path queries $(s,t,\tau^{\operatorname{dep}})$ where $\tau^{\operatorname{dep}} \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
+During the third and final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
 
 \subsection{A*}
 % feasibility
 % lower-bound
 \subsection{CCH}
 % customizations
+% CATCHUp?
 \subsection{Lazy RPHAST}
 
+\begin{algorithm2e}
+\KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on $\gchd$}
+\KwData{$\mathtt{D}[u]$: memoized final distance from $u$ to $t$, initially $\bot$}
+\SetKwFunction{Dist}{ComputeAndMemoizeDist}
+\SetKwProg{Fn}{Function}{:}{}
+\Fn{\Dist{$u$}}{
+    \If{$\mathtt{D}[u] = \bot$}{
+        $\mathtt{D}[u]\leftarrow \mathtt{D}^{\downarrow}[u]$\;
+        \For{all arcs $uv$ in $\gchu$}{
+            $d \leftarrow \Dist(v)$\;
+            \If{$\mathtt{D}[u] < d + w(uv)$}{
+                $\mathtt{D}[u] \leftarrow d + w(uv)$\;
+                % $\mathtt{P}[u] \leftarrow v$\;
+            }
+        }
+    }
+    \Return{$\mathtt{D}[u]$}\;
+}
+\caption{Computing the distance from a single vertex $u$ to $t$ with Lazy RPHAST}
+\label{algo:lazy_rphast}
+\end{algorithm2e}
+
 \section{Algorithms}
+
 \subsection{Multi-Metric Potential}
+
+We now introduce our first time-dependent potential, the \emph{Multi-Metric Potential}.
+Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \opttt(s,t,\tdep)$ the optimal arrival at the target.
+Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l(e) = \min_{\tau' \leq \tau \leq \tau''}\pred_e(\tau)$.
+Clearly, $\dist_{l}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
+If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too big, the estimates will be significantly tighter than global lower bound distances.
+The \emph{Multi-Metric Potential} is based on this observation.
+Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions valid for different time intervals.
+At query time, we then select an appropriate weight function.
+Efficiently computing distances with respect to the selected weight function is done with the Lazy RPHAST.
+
+\subparagraph{Preprocessing}
+The very first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute a nested dissection order~\cite{ghuw-fbndocch-19} and construct the unweighted chordally completed augmented graph.
+Now let $I$ be a set of time intervals.
+In our implementation, we use 48 intervals of length 1\,h starting at each full and each half hour, 24 intervals of length 2\,h starting at each full hour, 12 intervals of length 4\,h starting every two hours, 6 intervals of length 8\,h starting every 4 hours, 4 intervals of length 12\,h starting every 6 hours and one interval covering the entire day.
+During preprocessing, we extract lower bounds and run the CCH basic customization algorithm for each interval.
+This can be trivially parallelized.
+Also, the customization can be parallelized internally.
+For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19}.
+
+\subparagraph{Update}
+We compute an additional lower bound weight function of length 59\,minutes starting at $\tau^{\operatorname{now}}$ which incorporates the current live traffic situation.
+Further, we extract an upper bound weight function for the entire day valid with respect to both the predicted and the live traffic.
+We then run both the basic and the perfect customization algorithms for the upper bound without constructing a reduced augmented graph.
+Recall that after the perfect customization, each edge in the CCH has the length of the shortest distance between its endpoints.
+We now construct a reduced augmented graph for all lower bounds at once.
+This graph contains all edges for which the customized global lower bound weight is not greater than the customized upper bound.
+Edges where the upper bound now undercuts the global lower bound are removed in \emph{all} lower bound weights.
+% could do for each weight seperately but not worth it
+Finally, we construct the reduced graph for the upper bound by removing all edges which were improved during its perfect customization.
+The running time of the update phase is dominated by the construction of the reduced graphs.
+Parallelizing it is crucial to achieve good running times.
+See~\cite{bsw-rttau-19} for engineering details.
+Note that the graph reduction steps are entirely optional and only serve to optimize query performance.
+In case update running times are critical, the graph reduction can be skipped which will slightly worsen the query performance.
+
+\subparagraph{Query}
+We perform a classical CCH query on the customized upper bound to obtain a pessimistic estimate of $\tmax$.
+We then select the shortest lower bound interval which still fully includes $[\tdep,\tmax]$.
+Running Lazy RPHAST on the customized weight function of this interval then yields the potential function.
+% Metric switching
+
+% Correctness
+
 \subsection{Interval-Minimum Potential}
-\subsection{Adjustments for Live-Traffic}
 \subsection{Compression}
 \section{Evaluation}
 % data
