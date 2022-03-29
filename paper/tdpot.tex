@@ -70,7 +70,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newcommand*{\pred}{f}
-\newcommand*{\comb}{f}
+\newcommand*{\comb}{f^*}
+\newcommand*{\opttt}{\mathcal{T}}
 
 \begin{document}
 
@@ -172,21 +173,34 @@ Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of 
 
 \section{Preliminaries}
 We consider directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
-We use $uv$ as a short notation for an edge from vertex $u$ to vertex $v$.
-Each edge $e \in E$ has a travel time function $\pred_e : \mathbb{Z} \to \mathbb{Z}^{\geq 0}$ which maps a departure time $\tau$ to a predicted travel time $\pred_e(\tau)$.
+We use $uv$ as a short notation for an edge from a \emph{tail} vertex $u$ to \emph{head} vertex $v$.
+Each edge $e = uv \in E$ has a travel time function $\pred_e : \mathbb{Z} \to \mathbb{Z}^{\geq 0}$ which maps a departure time $\tau$ at $u$ to a predicted travel time $\pred_e(\tau)$.
+The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $\pred_P(\tau) = \pred_{v_1 v_2}(\tau) + \pred_{(v_2,\dots,v_k)}(\tau + \pred_{v_1 v_2}(\tau))$.
+In our implementation, travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day of predictions.
 We assume that all travel time functions adhere to the \emph{first-in first-out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
 Formally stated this means $\tau + \pred(\tau) \leq \tau + \epsilon + \pred(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
 With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{TODO}.
 
 % traffic model
-Edges may further have a currently observed live travel time $w_e$ which we assume to be valid until a point in time $\tau_e^{\operatorname{end}}$.
+Edges may further have a currently observed live travel time $w_e$ and a point in time $\tau_e^{\operatorname{end}}$ when we switch back to the predicted travel time.
 We assume that the traffic predictions are a conservative estimate and that live-traffic will always have slower travel times due to accidents and other traffic incidents.
 Thus, we define the combined travel time function of an edge as follows:
-$\comb_e(\tau) = \max(\pred_e(\tau), \min(w_e, \pred_e(\tau_e^{\operatorname{end}}) + \tau_e^{\operatorname{end}} - \tau ))$.
+$\comb_e(\tau) = \max(\pred_e(\tau), \min(w_e, \pred_e(\tau_e^{\operatorname{end}}) + \tau_e^{\operatorname{end}} - \tau))$.
 
-Our goal is to find the path $P = (s=v_1,\dots,v_k=t)$ that minimizes $\comb_P(\tau)$
+Our goal is given vertices $s$ and $t$ and an earliest departure $\tau^{\operatorname{dep}}$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb_P(\tau^{\operatorname{dep}})$.
+We refer to the travel time of this path as $\opttt(s,t,\tau^{\operatorname{dep}})$.
+
+\subsection{Application Model}
 
 % phases
+We consider an application model with three phases.
+During the first \emph{preprocessing} phase, the graph topology and traffic predictions are given.
+A preprocessing algorithm may use these inputs to precompute auxiliary data which may take several hours.
+In the second \emph{update} phase, traffic weights are given for the current moment $\tau^{\operatorname{now}}$ and should be incorporated into the precomputed data within as little time as possible.
+This phase may be repeated frequently to adjust to the current state of traffic.
+We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
+During the third and final \emph{query} phase, many shortest path queries $(s,t,\tau^{\operatorname{dep}})$ where $\tau^{\operatorname{dep}} \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
+
 \subsection{A*}
 % feasibility
 % lower-bound
@@ -198,7 +212,7 @@ Our goal is to find the path $P = (s=v_1,\dots,v_k=t)$ that minimizes $\comb_P(\
 \subsection{Multi-Metric Potential}
 \subsection{Interval-Minimum Potential}
 \subsection{Adjustments for Live-Traffic}
-\subsection{Metric Reduction}
+\subsection{Compression}
 \section{Evaluation}
 % data
 \section{Conclusion}
