@@ -212,8 +212,9 @@ We refer to the travel time of this path as $\opttt(s,t,\tdep)$.
 We consider an application model with three phases.
 During the first \emph{preprocessing} phase, the graph topology and traffic predictions are given.
 A preprocessing algorithm may use these inputs to precompute auxiliary data which may take several hours.
+Preprocessing should still be fast enough to rerun it on a daily basis.
 In the second \emph{update} phase, traffic weights are given for the current moment $\tau^{\operatorname{now}}$ and should be incorporated into the precomputed data within as little time as possible.
-This phase may be repeated frequently to adjust to the current state of traffic.
+This phase may be repeated frequently (every few minutes) to adjust to the current state of traffic.
 We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
 During the third and final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
 
@@ -364,7 +365,81 @@ To determine the next weight function pair to merge, unfinished weight function 
 The minimum difference is tracked in an atomic variable.
 
 \section{Evaluation}
-% data
+% env
+\subparagraph{Environment} Our benchmark machine runs openSUSE Leap 15.3 (kernel 5.3.18), and has 192\,GiB of DDR4-2666 RAM and two Intel Xeon Gold 6144 CPUs, each of which has eight cores clocked at 3.5\,GHz and 8~$\times$~64\,KiB of L1, 8~$\times$~1\,MiB of L2, and 24.75\,MiB of shared L3 cache.
+Hyperthreading was disabled and parallel experiments use 16 threads.
+We implement our algorithms in Rust\footnote{The code for this paper and all experiments is available at \url{https://github.com/kit-algo/tdpot}} and compile them with \texttt{rustc 1.61.0-nightly (c84f39e6c 2022-03-20)} in the release profile with the \texttt{target-cpu=native} option.
+% To compile InertialFlowCutter and RoutingKit which are written in C++, we use GCC~10.3.0 using optimization level 3 and the -march=native option.
+
+\subparagraph{Datasets}
+We evaluate our algorithms on two networks where we have proprietary real-world traffic data available.
+Sadly, we can not provide access to these datasets due to non-disclosure agreements.
+The datasets are the same ones used in~\cite{swz-sfert-21,strasser_et_al:LIPIcs.SEA.2021.6}.
+We are not aware of any publicly available traffic feeds or predictions.
+%
+Our first network, PTV Europe, was provide by PTV\footnote{\url{https://ptvgroup.com}} in 2020 and is based on TomTom\footnote{\url{https://www.tomtom.com}} routing data covering western Europe.
+It has 28.5\,M vertices and 61\,M edges.
+Three quarters of the edges have a non-constant travel time.
+The data includes a traffic incident snapshot from 2020/10/28 07:47 with live speeds and estimated incident durations for 215\,K vertex pairs.
+% ignoring too long
+%
+Our second network, OSM Germany, is derived from an early 2020 snapshot of OpenStreetMap and converted into a routing graph using RoutingKit\footnote{\url{https://github.com/RoutingKit/RoutingKit}}.
+The graph has 16.2\,M vertices and 35.2\,M edges.
+For this instance, we have proprietary traffic data provided by Mapbox\footnote{\url{https://mapbox.com}}.
+This includes traffic predictions for 38\% of the edges as predicted speeds for all five minute periods over the course of a entire week.
+We only use the predictions for one day.
+Also, we exclude speed values which are faster than the freeflow speed computed by RoutingKit.
+The data also includes two live traffic snapshots in the form of OSM node ID pairs and live speeds for the edge between the vertices.
+One is from Friday 2019/08/02 15:41 and contains 320\,K vertex pairs and the other from Tuesday 2019/07/16 10:21 and contains 185\,K vertex pairs.
+The datasets do no contain any estimate how long the observed live speeds are valid.
+We therefore set $\tau_e^{\operatorname{end}}$ to one hour after the snapshot time.
+% relative delays?
+Note that even though it is smaller and has less time-dependent edges, OSM Germany is actually the harder instance.
+This is because it has more breakpoints per time-dependent edge (124.8 compared to 22.5 on PTV Europe) and the predicted travel times fluctuate much stronger.
+
+% {
+%   "args": [
+%     "target/release/explore_graph_catchup",
+%     "/algoDaten/zeitz/roadgraphs/osm_ger_td_build2022/"
+%   ],
+%   "build_profile": "release",
+%   "build_target": "x86_64-unknown-linux-gnu",
+%   "build_time": "Wed, 30 Mar 2022 14:56:13 +0000",
+%   "build_with_rustc": "rustc 1.61.0-nightly (c84f39e6c 2022-03-20)",
+%   "feature_flags": "DEFAULT, TDCCH_APPROX, TDCCH_POSTCUSTOMIZATION, TDCCH_PRECUSTOMIZATION, TDCCH_QUERY_ASTAR, TDCCH_QUERY_CORRIDOR, TDCCH_QUERY_LAZY, TDCCH_TRIANGLE_SORTING",
+%   "git_revision": "cebb481",
+%   "graph": {
+%     "num_arcs": 35186806,
+%     "num_constant_ttfs": 21726770,
+%     "num_ipps": 1679732710,
+%     "num_nodes": 16175148
+%   },
+%   "hostname": "compute11",
+%   "program": "explore_graph_catchup",
+%   "relative_delays": {
+%     "mean": 0.26955234976571363,
+%     "nonconst_mean": 0.8491454402873269,
+%     "nonconst_total_relative_delay": 0.788178202531493,
+%     "total_relative_delay": 0.0231669950618092
+%   },
+%   "start_time": "2022-03-30T14:57:42.952792137+00:00",
+%   "unprocessed_graph": {
+%     "num_arcs": 35186806,
+%     "num_ipps": 1679732710,
+%     "num_nodes": 16175148
+%   }
+% }
+
+\subparagraph{Methodology}
+We evaluate our algorithms with batches of 100\,K shortest path queries solved sequentially using three different query sets:
+First, there are random queries where source and target are drawn from all vertices uniformly at random which leads to mostly long-range queries.
+Second are 1h queries where we draw a source vertex uniformly at random, run Dijkstra's algorithm from it and pick the first node with a distance greater one hour as the target.
+Third, following the established Dijkstra rank methodology~\cite{}, we generate rank queries for a thorough investigation of the performance by query distance.
+For the rank queries, we pick a source uniformly at random and run Dijkstra's algorithm from it.
+We use every $2^{i}$th settled vertex as the target of Dijkstra rank $2^i$.
+To evaluate the performance of the preprocessing and update phases, we run them 10 and 100 times, respectively.
+Preprocessing and update phases utilize all cores using 16 threads.
+
 \section{Conclusion}
 
 % \section{Typesetting instructions -- Summary}
