@@ -231,7 +231,6 @@ namespace "exp" do
           sh "cargo run --release --bin multi_metric_pre -- #{graph}"
           100.times do
             sh "cargo run --release --bin multi_metric_live_customization -- #{graph} #{metric[1]} #{metric[0]} > #{exp_dir}/customization/$(date --iso-8601=seconds).json"
-            sh "rm -r #{graph}multi_metric_pre"
             sh "rm -r #{graph}multi_metric_pot"
             sh "cargo run --release --bin interval_min_live_customization -- #{graph} #{metric[1]} #{metric[0]} > #{exp_dir}/customization/$(date --iso-8601=seconds).json"
             sh "rm -r #{graph}interval_min_pot"
