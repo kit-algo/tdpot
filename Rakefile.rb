@@ -162,7 +162,6 @@ namespace "exp" do
 
         sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/predicted_queries_no_topo #{graph} queries/uniform zero > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
         sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform zero > #{exp_dir}/rand/$(date --iso-8601=seconds).json"
-
       end
     end
   end
@@ -196,7 +195,6 @@ namespace "exp" do
 
           sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/live_and_predicted_queries_no_topo #{graph} #{metric[1]} #{metric[0]} queries/uniform zero > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
           sh "CHPOT_NUM_QUERIES=1000 numactl -N 1 -m 1 target/release/live_and_predicted_queries #{graph} #{metric[1]} #{metric[0]} queries/uniform zero > #{exp_dir}/rand_live/$(date --iso-8601=seconds).json"
-
         end
       end
     end
@@ -221,7 +219,6 @@ namespace "exp" do
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
           sh "rm -r #{graph}multi_metric_pre"
           sh "rm -r #{graph}multi_metric_pot"
-
         end
       end
     end
@@ -234,7 +231,10 @@ namespace "exp" do
           sh "cargo run --release --bin multi_metric_pre -- #{graph}"
           100.times do
             sh "cargo run --release --bin multi_metric_live_customization -- #{graph} #{metric[1]} #{metric[0]} > #{exp_dir}/customization/$(date --iso-8601=seconds).json"
+            sh "rm -r #{graph}multi_metric_pre"
+            sh "rm -r #{graph}multi_metric_pot"
             sh "cargo run --release --bin interval_min_live_customization -- #{graph} #{metric[1]} #{metric[0]} > #{exp_dir}/customization/$(date --iso-8601=seconds).json"
+            sh "rm -r #{graph}interval_min_pot"
           end
         end
       end
@@ -249,7 +249,10 @@ namespace "exp" do
           sh "echo '#{graph}' >> #{filename}"
           sh "./flow_cutter_cch_order.sh #{graph} #{Etc.nprocessors} >> #{filename}"
           sh "cargo run --release --bin interval_min_pre -- #{graph} > #{exp_dir}/preprocessing/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}interval_min_pot"
           sh "cargo run --release --bin multi_metric_pre -- #{graph} > #{exp_dir}/preprocessing/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}multi_metric_pre"
+          sh "rm -r #{graph}multi_metric_pot"
         end
       end
     end
