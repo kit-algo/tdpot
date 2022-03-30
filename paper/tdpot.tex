@@ -19,6 +19,7 @@
 
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
+% fast and exact
 \title{Combining Predicted and Live-Traffic with Time-Dependent A* Potentials} %TODO Please add
 
 %\titlerunning{Dummy short title} %TODO optional, please use if title is longer than one line
@@ -303,6 +304,7 @@ We therefore utilize the existing CATCHUp algorithm~\cite{swz-sfert-21}.
 Second, storing the travel time functions of an augmented graph can be very expensive in terms of memory consumption.
 Also, the usual representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
 We therefore resort to a different representation and store functions as piecewise constant values in buckets of equal time.
+In our implementation, we split the day into 96 buckets of length 15 minutes.
 Third, evaluating the lower bound functions requires a time of evaluation.
 While we have a time for the vertex for which we compute the potential, Lazy RPHAST also needs a time for every recursive invocation.
 We therefore apply Lazy RPHAST a second time on a global upper and lower bound weight function to obtain an arrival interval at each vertex.
@@ -343,6 +345,24 @@ Thus, having their weights for the same bucket close to each other increases cac
 % correctness
 
 \subsection{Compression}
+
+Both our time-dependent potentials have to store a significant number of weight functions.
+This can lead to problematic memory consumption.
+However, since we only need lower bounds, we can merge lower bound weight functions into a combined weight function with the respective minimum weights and thus reduce the number of weight functions we need to store.
+Thus by trading some lower bound tightness, we can reduce memory consumption.
+Dealing with merged lower bound functions can be implemented for both potentials with a layer of indirection which maps each bucket or interval to a weight function id.
+Then, when merging to weight functions, we let both buckets/intervals point to the same weight function id.
+
+We now discuss an efficient and well parallelizable algorithm to iteratively merge weight functions until only $k$ functions remain.
+In each step, we merge the pair of weight functions with the minimal sum of squared differences over all edge weights.
+Since comparing all weight function pairs is expensive, we track the minimum difference sum we have found so far and stop any comparison where the sum exceeds the best sum.
+Even when stopping a comparison, we store the sum so far and the edge id up to which we have summed up the differences.
+This allows to avoid repeating the work already performed should we need to continue to compare this particular pair of weight functions.
+Finally, we maintain all pairs of weights along with the (possibly partial) difference sums in a priority queue ordered by the difference sums.
+When merging two weight functions, all other associated queue entries are removed from the queue and new entries for comparisons between the new weight function and all other functions are inserted.
+To determine the next weight function pair to merge, unfinished weight function pairs are popped from the queue and processed in parallel.
+The minimum difference is tracked in an atomic variable.
+
 \section{Evaluation}
 % data
 \section{Conclusion}
