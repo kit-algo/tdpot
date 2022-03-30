@@ -132,6 +132,7 @@ namespace "exp" do
   directory "#{exp_dir}/rank_live"
   directory "#{exp_dir}/compression"
   directory "#{exp_dir}/compression_1h"
+  directory "#{exp_dir}/compression_times"
   directory "#{exp_dir}/preprocessing"
   directory "#{exp_dir}/customization"
 
@@ -200,7 +201,7 @@ namespace "exp" do
     end
   end
 
-  task compression: ["#{exp_dir}/compression", "#{exp_dir}/compression_1h"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform'].map { |q| "#{g}queries/#{q}" } } do
+  task compression: ["#{exp_dir}/compression", "#{exp_dir}/compression_1h", , "#{exp_dir}/compression_times"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform'].map { |q| "#{g}queries/#{q}" } } do
     Dir.chdir "code/rust_road_router" do
       sh "cargo build --release --bin predicted_queries"
       graphs.each do |graph, _|
@@ -208,13 +209,13 @@ namespace "exp" do
           sh "mkdir #{exp_dir}/compression/#{k}" unless Dir.exist? "#{exp_dir}/compression/#{k}"
           sh "mkdir #{exp_dir}/compression_1h/#{k}" unless Dir.exist? "#{exp_dir}/compression_1h/#{k}"
 
-          sh "cargo run --release --bin interval_min_reduction -- #{graph} #{k} customized_corridor_mins reduced_corridor_mins"
+          sh "cargo run --release --bin interval_min_reduction -- #{graph} #{k} customized_corridor_mins reduced_corridor_mins > #{exp_dir}/compression_times/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h interval_min_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
           sh "rm -r #{graph}interval_min_pot"
           sh "rm -r #{graph}reduced_corridor_mins"
 
-          sh "cargo run --release --bin multi_metric_pre -- #{graph} multi_metric_pre multi_metric_pot #{k}"
+          sh "cargo run --release --bin multi_metric_pre -- #{graph} multi_metric_pre multi_metric_pot #{k} > #{exp_dir}/compression_times/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform multi_metric_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/1h multi_metric_pot > #{exp_dir}/compression_1h/#{k}/$(date --iso-8601=seconds).json"
           sh "rm -r #{graph}multi_metric_pre"
