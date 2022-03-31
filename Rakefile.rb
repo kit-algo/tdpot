@@ -201,7 +201,7 @@ namespace "exp" do
     end
   end
 
-  task compression: ["#{exp_dir}/compression", "#{exp_dir}/compression_1h", , "#{exp_dir}/compression_times"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform'].map { |q| "#{g}queries/#{q}" } } do
+  task compression: ["#{exp_dir}/compression", "#{exp_dir}/compression_1h", "#{exp_dir}/compression_times"] + graphs.map { |g, _| g + "customized_corridor_mins" } + graphs.flat_map { |g, _| ['1h', 'uniform'].map { |q| "#{g}queries/#{q}" } } do
     Dir.chdir "code/rust_road_router" do
       sh "cargo build --release --bin predicted_queries"
       graphs.each do |graph, _|
