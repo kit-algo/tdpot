@@ -205,7 +205,7 @@ namespace "exp" do
     Dir.chdir "code/rust_road_router" do
       sh "cargo build --release --bin predicted_queries"
       graphs.each do |graph, _|
-        [2, 4, 8, 16, 32, 64] + [10, 20, 30, 40, 50, 60, 70, 80, 90].each do |k|
+        ([2, 4, 8, 16, 32, 64] + [10, 20, 30, 40, 50, 60, 70, 80, 90]).each do |k|
           sh "mkdir #{exp_dir}/compression/#{k}" unless Dir.exist? "#{exp_dir}/compression/#{k}"
           sh "mkdir #{exp_dir}/compression_1h/#{k}" unless Dir.exist? "#{exp_dir}/compression_1h/#{k}"
 
