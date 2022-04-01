@@ -70,8 +70,8 @@
 \ArticleNo{23}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newcommand*{\pred}{f}
-\newcommand*{\comb}{f^*}
+\newcommand*{\pred}{p}
+\newcommand*{\comb}{c}
 \newcommand*{\opttt}{\mathcal{T}}
 \newcommand*{\dist}{\mathcal{D}}
 \newcommand*{\lb}{\mathcal{L}}
@@ -186,24 +186,32 @@ Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of 
 \section{Preliminaries}
 We consider directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
 We use $uv$ as a short notation for an edge from a \emph{tail} vertex $u$ to \emph{head} vertex $v$.
-Each edge $e = uv \in E$ has a travel time function $\pred_e : \mathbb{Z} \to \mathbb{Z}^{\geq 0}$ which maps a departure time $\tau$ at $u$ to a predicted travel time $\pred_e(\tau)$.
-The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $\pred_P(\tau) = \pred_{v_1 v_2}(\tau) + \pred_{(v_2,\dots,v_k)}(\tau + \pred_{v_1 v_2}(\tau))$.
-In our implementation, travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day of predictions.
+Weight function $w : E \to (\mathbb{Z} \to \mathbb{Z}^{\geq 0})$ map edges to time-dependent functions.
+These functions map a departure $\tau$ at the tail $u$ to a travel time $w(uv)(\tau)$.
+The arrival at the head $v$ is thus $w(uv)(\tau) + \tau$.
+To simplify notation we will often write $w(uv, \tau)$.
+Further, when it is clear from context that we talk about constant travel time functions, we will omit the time argument and write $w(uv)$.
+We extend the weight function definition to paths:
+The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $w(P, \tau) = w(v_1 v_2, \tau) + w_((v_2,\dots,v_k), \tau + w_{v_1 v_2}(\tau))$.
 We assume that all travel time functions adhere to the \emph{first-in first-out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
-Formally stated this means $\tau + \pred(\tau) \leq \tau + \epsilon + \pred(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
+Formally stated this means $\tau + w(\tau) \leq \tau + \epsilon + w(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
 % TODO explain waiting?
 With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{or-tnp-89}.
 
 % traffic model
-Edges may further have a currently observed live travel time $w_e$ and a point in time $\tau_e^{\operatorname{end}}$ when we switch back to the predicted travel time.
+In our problem model, each edge $e \in E$ has a predicted travel time function $\pred(e)$.
+Predicted travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day of predictions.
+Further, edges may have a currently observed (constant) live travel time $l(e)$ and a point in time $\tau^{\operatorname{end}}(e)$ when we switch back to the predicted travel time.
 We assume that the traffic predictions are a conservative estimate and that live-traffic will always have slower travel times due to accidents and other traffic incidents.
 Thus, we define the combined travel time function of an edge as follows:
-$\comb_e(\tau) = \max(\pred_e(\tau), \min(w_e, \pred_e(\tau_e^{\operatorname{end}}) + \tau_e^{\operatorname{end}} - \tau))$.
+$\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{end}}(e)) + \tau^{\operatorname{end}}(e) - \tau))$.
 % TODO talk about -1 segment
 % TODO visualize
 % TODO inf
 
-Our goal is given vertices $s$ and $t$ and an earliest departure $\tdep$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb_P(\tdep)$.
+% TODO general td fns vs concrete predicted and combined fns
+
+Our goal is given vertices $s$ and $t$ and an earliest departure $\tdep$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
 We refer to the travel time of this path as $\opttt(s,t,\tdep)$.
 
 \subsection{Application Model}
@@ -218,13 +226,97 @@ This phase may be repeated frequently (every few minutes) to adjust to the curre
 We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
 During the third and final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
 
-\subsection{A*}
-% feasibility
-% lower-bound
-\subsection{CCH}
+\subsection{Dijkstra/A*}
+
+% distance vs arrival times
+Dijkstra's algorithm computes $\opttt(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
+The distances from $s$ of each vertex $u$ are tracked in an array $\mathtt{D}[u]$, initially set to $\infty$ for all vertices.
+A priority queue with vertices ordered by their distance from $s$ is maintained.
+The priority queue is initialized with $s$ and $\mathtt{D}[u]$ set to $\tdep$.
+In each iteration, the next closest vertex $u$ is extracted from the queue and \emph{settled}.
+Outgoing edges $uv$ are \emph{relaxed}, i.e.\ the algorithm checks if $\mathtt{D}[u] + w(uv, \mathtt{D}[u])$ improves $\mathtt{D}[v]$.
+If so, the queue position of $v$ is adjusted accordingly.
+Once $t$ was settled, the final distance is known and the search can terminate.
+
+% remove?
+Dijkstra's algorithm has a worst case running time of $\mathcal{O}((n + m) \log n)$ when the queue is implemented as a $k$-ary heap.
+In the presence of negative edge weights, Dijkstra still will find correct shortest distances, as long as there are no negative cycles.
+However, distances may not be final anymore after a vertex was settled.
+The algorithm is then denoted as \emph{label-correcting} instead of \emph{label-setting}.
+
+% search space
+% heurisitc vs potential
+A* is an extension of Dijkstra's algorithm where the search is guided towards the target through a potential function $\pi_t$ which estimates the remaining distance to the target.
+This estimate is added to the queue key.
+Thus, vertices closer to the target a visited earlier and the search space becomes smaller.
+In this paper, we propose time-dependent potentials $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$.
+By mapping each vertex to a time-dependent function, we can obtain tighter estimates and accelerate queries further.
+Analogue to classical potentials, there are several important properties when discussing the correctness of potential functions:
+\begin{itemize}
+  \item Feasibility: $w_(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau$
+  \item Lower bound: $\pi_t(v, \tau) \leq \dist(v,t,\tau)$ for all vertices $v \in V$ and times $\tau$
+  \item First-In First-Out (FIFO): $\pi_t(v, \tau) \leq \pi_t(v, \tau + \epsilon) + \epsilon$ for all vertices $v \in V$, times $\tau$ and $\epsilon \geq 0$
+\end{itemize}
+The FIFO property must hold for all time-dependent potentials for A* to work properly.
+With lower-bound potentials, A* is label-correcting but will have determined the shortest distance once $t$ is settled for the \emph{first} time.
+For feasible potentials, A* is label-setting and a running time of $\mathcal{O}((n + m) \log n)$ is guaranteed.
+See Appendix for detailed discussion.
+
+% The queue is ordered by $\mathtt{D}[u] + \pi_t(u)$.
+% A* is equivalent to running Dijkstra's algorithm on a graph with modified weights $w'_{uv} = w_{uv} + \pi_t(v) - \pi_t(u)$.
+% If this modified weight is non-negative for all weights, a potential function is called \emph{feasible}.
+% For feasible potentials, A* has the same theoretical worst-case running time as Dijkstra's algorithm and will always have obtained the optimal distance once $t$ was settled.
+% A* will also obtain correct results when $\pi_t(v) \leq \dist(v, t)$ for all vertices $v \in V$. % TODO proof
+% Even when the modified weights may have negative weights, all vertices on the shortest path will have a queue key smaller than the target.
+% Thus, we can prove inductively, that the shortest path and distance will have been found, once $t$ is settled.
+% Nevertheless, the label-setting property is not given anymore and vertices other than $t$ may be settled multiple time.
+% The theoretical worst-case running time can also not be guaranteed anymore.
+
+% We now generalize the notion of potentials to the time-dependent setting and propose \emph{time-dependent potentials}.
+% % TODO time domain
+% A time-dependent potential maps a vertex to a time-dependent function $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$.
+% The function maps instant to an estimate of the remaining travel time to the target.
+
+
+
+\subsection{Contraction Hierarchies}
+
+\emph{Contraction Hierarchies} (CH) is a speed-up technique to accelerate shortest path computations on road networks through precomputation.
+For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
+% Here, we briefly introduce necessary notation and concepts used in this paper.
+During the preprocessing, vertices are ordered totally by ``importance'' where more important vertices should lie on more shortest paths.
+Intuitively, vertices on highways are more important than vertices on rural streets.
+Then, an \emph{augmented graph} $G^+$ with additional \emph{shortcut edges} is constructed.
+Shortcut edges are inserted in such a way that between any two vertices $s$ and $t$ there exists a path of shortest distance which uses no vertices less important than $s$ and $t$.
+This allows finding shortest paths by running Dijkstra's algorithm from both $s$ and $t$ and only following edges toward more important vertices.
+Formally, we split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u$ is less important than $v$ and $G^{\downarrow}$ vice versa and run Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
+
+In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
+For CCH, the construction of the augmented graph is split in three steps.
+First, the vertex ordering is obtained using nested dissection.
+A balanced vertex separator is computed heuristically and the vertices in it are assigned the highest importance.
+The process is then recursively applied to all cells.
+In the second step the topology of the augmented graph is computed.
+For this, vertices are processed by ascending importance.
+For every vertex, its neighborhood of more important vertices is completed to form a clique.
+
+In the final step, the \emph{customization}, the weights of the augmented graph are computed.
+
 % customizations
 % CATCHUp?
-\subsection{Lazy RPHAST}
+
+\subsection{Lazy RPHAST and CH-Potentials}
+
+Lazy RPHAST~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a CH-based algorithm to incrementally compute distances from many sources toward a common target
+It is a variant of the CH query algorithm where one half of the search is replaced with a recursive depth-first search (DFS) which memoizes distances.
+Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
+The first step is a run Dijkstra's algorithm on $\gchd$ from the target.
+Then, the main routing depicted in Algorithm~\ref{algo:lazy_rphast} can be called for every source to obtain the shortest distance to the target.
+If the distance of a vertex was previously computed, the routine terminates immediately and returns the memoized value.
+Otherwise, the distance is computed as the minimum over the recursively computed distances of the upward neighbors plus the respective edge weights and the distance possibly found in the backward search.
+Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
+Lazy RPHAST can be applied to CCH without modifications.
+% low deg optimizations
 
 \begin{algorithm2e}
 \KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on $\gchd$}
@@ -238,7 +330,6 @@ During the third and final \emph{query} phase, many shortest path queries $(s,t,
             $d \leftarrow \Dist(v)$\;
             \If{$\mathtt{D}[u] < d + w(uv)$}{
                 $\mathtt{D}[u] \leftarrow d + w(uv)$\;
-                % $\mathtt{P}[u] \leftarrow v$\;
             }
         }
     }
