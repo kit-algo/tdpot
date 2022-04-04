@@ -292,18 +292,40 @@ This allows finding shortest paths by running Dijkstra's algorithm from both $s$
 Formally, we split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u$ is less important than $v$ and $G^{\downarrow}$ vice versa and run Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
 
 In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
-For CCH, the construction of the augmented graph is split in three steps.
+For CCH, the construction of the augmented graph is split in three stages.
 First, the vertex ordering is obtained using nested dissection.
 A balanced vertex separator is computed heuristically and the vertices in it are assigned the highest importance.
 The process is then recursively applied to all cells.
-In the second step the topology of the augmented graph is computed.
+In the second stage the topology of the augmented graph is computed.
 For this, vertices are processed by ascending importance.
 For every vertex, its neighborhood of more important vertices is completed to form a clique.
 
-In the final step, the \emph{customization}, the weights of the augmented graph are computed.
+In the final stage, the \emph{customization}, the weights of the augmented graph are computed.
+The first step of the customization is to apply the current weights to the respective edge weights in the augmented graph.
+All other edges in the augmented graph are set to $\infty$.
+In the second step, the algorithm iterates over all edges $uv$ ordered increasingly by the ranks of the endpoints.
+For each edge, all \emph{lower triangles} $(u,w,v)$ where both $uw$ and $wv \in E^+$ and $w$ has a smaller importance than both $u$ and $v$ are enumerated and relaxed, i.e.\ if $w(uv)$ is set to $\min(w(uv), w((u,w,v)))$.
+Now, each edge has the weight of the shortest path using only lower ranked vertices which is sufficient to allow applying the CH query algorithm.
+% basic customization
+However, not all of these edges are necessary.
+In an optional further step, the \emph{perfect customization}, unnecessary edges are identified.
+For this, all edges are processed again but this time in a top-down fashion, i.e\ ordered decreasingly by the ranks of the endpoints.
+Now, for each edge, all \emph{intermediate triangles} and \emph{upper triangles} $(u,w,v)$ where both $uw$ and $wv \in E^+$ and $w$ has a smaller importance than either $u$ and $v$ are enumerated and relaxed, i.e.\ if $w(uv)$ is set to $\min(w(uv), w((u,w,v)))$.
+Now, each edge in the augmented graph has the weight of the shortest distance between its endpoints.
+The authors of~\cite{dsw-cch-15} proved that only edges for which the weight remained unchanged during the perfect customization are necessary to guarantee the correctness of the CH query algorithm.
+Thus, in a final step all edges with changed weights are removed and a \emph{reduced augmented graph} is constructed.
+% perfect not always necessary
 
-% customizations
-% CATCHUp?
+CATCHUp~\cite{swz-sfert-21} is a time-dependent adaption of CCH.
+In this paper, we utilize its preprocessing as a block box.
+This gives us for each edge in the augmented a relatively tight lower bound approximation of the shortest path through lower ranked nodes, i.e.\ the result of a time-dependent basic customization.
+Further, we get tighter scalar lower and upper bounds than we would get by applying the classical customization algorithms on constant upper and lower bound weight functions.
+CATCHUp does not support a time-dependent perfect customization.
+However, a decent number of edges can still be removed by utilizing the scalar bounds.
+For this, the perfect customization is run on scalar upper bounds.
+Then for each bound the lower bound (which is valid for the path represented by the shortcut) can be compared to the upper bound (which is a bound on the shortest distance between the endpoints).
+Each edge where the shortest path upper bound is smaller then the shortcut lower bound can be removed~\cite{swz-sfert-21}.
+We will also utilize this principle for our time-dependent potentials.
 
 \subsection{Lazy RPHAST and CH-Potentials}
 
@@ -317,6 +339,7 @@ Otherwise, the distance is computed as the minimum over the recursively computed
 Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
 Lazy RPHAST can be applied to CCH without modifications.
 % low deg optimizations
+% relate to td
 
 \begin{algorithm2e}
 \KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on $\gchd$}
