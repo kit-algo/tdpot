@@ -44,6 +44,8 @@ ptv_live_csv = "#{data_dir}/ptv/smallEuropeTuesdayCarWithIncidentDuration_ti.csv
 graphs = [[osm_ger, [heavy, lite]], [ptv_eur, [default]]]
 
 namespace "prep" do
+  directory ptv_eur
+
   file typical_file do
     Dir.chdir "code/rust_road_router" do
       sh "cat #{typical_glob} | cargo run --release --bin scrub_td_mapbox -- 576 864 > #{typical_file}"
