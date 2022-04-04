@@ -258,9 +258,11 @@ Analogue to classical potentials, there are several important properties when di
   \item First-In First-Out (FIFO): $\pi_t(v, \tau) \leq \pi_t(v, \tau + \epsilon) + \epsilon$ for all vertices $v \in V$, times $\tau$ and $\epsilon \geq 0$
 \end{itemize}
 The FIFO property must hold for all time-dependent potentials for A* to work properly.
-With lower-bound potentials, A* is label-correcting but will have determined the shortest distance once $t$ is settled for the \emph{first} time.
 For feasible potentials, A* is label-setting and a running time of $\mathcal{O}((n + m) \log n)$ is guaranteed.
-See Appendix for detailed discussion.
+With lower-bound potentials, A* may be label-correcting but will have determined the shortest distance once $t$ is settled for the \emph{first} time.
+To answer a concrete query $s,t,\tdep$ it is actually sufficient to fulfill these properties only for very specific instants, i.e.\ for $\tau = \dist(s,u, \tdep)$ the best possible arrival at each vertex $u$.
+Our proposed potentials heavily rely on this and only compute potential data for the specific moments necessary to answer a query correctly.
+In Appendix~\ref{sec:correctness} we derive and discuss the correctness properties in detail, formally prove that queries will be answered correctly with these properties and also give proofs for the potentials proposed in the next section.
 
 % The queue is ordered by $\mathtt{D}[u] + \pi_t(u)$.
 % A* is equivalent to running Dijkstra's algorithm on a graph with modified weights $w'_{uv} = w_{uv} + \pi_t(v) - \pi_t(u)$.
@@ -698,6 +700,76 @@ Preprocessing and update phases utilize all cores using 16 threads.
 \bibliography{references}
 
 \appendix
+
+\section{Time-Dependent A* Potentials and Correctness Properties}\label{sec:correctness}
+
+In this section, we analyze correctness properties for time-dependent A* potentials.
+For the analysis, it is oftentimes more practical the use arrival time functions instead of travel time functions.
+Given a travel time function $w$, we denote the respective arrival time function as $\hat{w}(uv, \tau) := w(uv, \tau) + \tau$.
+With arrival time functions, we can represent path lengths simply as the composition of the edges arrival time functions.
+Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on a graph $G$ with time-dependent travel times $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's on the same graph with modified weights $w'$.
+Consider a vertex $u$ with an arrival time of $\tau$.
+In A*, its queue key is $\tau' = \hat{\pi}_t(u, \tau)$.
+When relaxing an edge $uv$, we get a queue key of $\hat{\pi}_t(u, \hat{w}(uv, \tau))$ at $v$.
+Thus, by definition we get $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$ where $\hat{\pi}_t(u)^{-1}$ is the inverted arrival time function, i.e.\ a \emph{departure time} function.
+For $\hat{\pi}_t(u)^{-1}$ to be well defined, we need $\tau_1 \neq \tau_2 \implies \hat{\pi}_t(\tau_1) \neq \hat{\pi}_t(\tau_2)$.
+Therefore, for potentials we require the \emph{strong First-In First-Out} property:
+\[
+\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon, v \in V, \tau \in T, \epsilon \geq 0
+\]
+Note that potentials which only adhere to the regular FIFO property in practice likely work just as well.
+It just breaks the well-definedness of the modified weights for an theoretically equivalent run of Dijkstra's algorithm.
+
+Shortest paths for these modified weights are the same es with the original weights.
+Consider the weights of two different $s$-$t$ paths.
+The initial potential at $s$ is the same for both paths, all the inner potential evaluations cancel out and the potentials at $s$ and the final potential evaluation at $t$ cannot change the order due to the FIFO property.
+
+We can follow that when these modified weights do not have any negative travel times, then Dijkstra and thus A* will obtain correct result. % running time
+This leads to the \emph{feasibility} property for time-dependent potentials:
+\[
+\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau'))) \geq \tau'
+\]
+To simplify correctness proofs for potentials, we reform this to a simpler equivalent property:
+\begin{align*}
+\hat{\pi}_t(v, \hat{w}(uv, \tau)) & \geq \hat{\pi}_t(u, \tau) \\
+\pi_t(v, w(uv, \tau) + \tau) + w(uv, \tau) + \tau & \geq \pi_t(u, \tau) + \tau \\
+\pi_t(v, w(uv, \tau) + \tau) + w(uv, \tau) - \pi_t(u, \tau) & \geq 0
+\end{align*}
+This formulation also shows that the time-dependent feasibility is a generalization to the classical feasibility property.
+
+The third property is the \emph{lower bound} property:
+\[
+\pi_t(v, \tau) \leq \dist(v,t,\tau)
+\]
+With a potential fulfilling this property, A* will have found the shortest path once the target vertex was settled, even if the potential is not feasible.
+This is because every shortest path vertex must have a queue key smaller than the target and by induction all these vertexes must have been settled before the target.
+Also, even with negative travel times, negative cycles are not possible.
+Consider a cycle $C$ starting and ending at vertex $v$.
+The length of the cycle with the modified weights is $w'(C, \tau') = \hat{\pi}_t(v, \hat(w)(C, \hat{\pi}_t(u)^{-1}(\tau')))$ because all inner potential functions cancel out.
+As $\hat{\pi}_t(v)$ has to adhere to the FIFO property, the length of $C$ cannot be negative.
+Thus, A* with lower bound potentials will obtain correct results.
+However, the running time may be exponential in the graph size.
+
+Crucially, to guarantee correctness it is not necessary to adhere to these properties for all $\tau$.
+Assume we are running A* to answer a query from $s$ to $t$ with departure $\tdep$.
+Clearly, A* will never invoke the potential of vertex $v$ with $\tau < \dist(s,v,\tdep)$.
+Therefore, it is sufficient to guarantee the strong FIFO property at vertex $v$ and the feasibility property for edge $vw$ for $\tau \geq \dist(s,v,\tdep)$.
+For the lower bound property it even suffices to guarantee it only at exactly $\tau = \dist(s,v,\tdep)$.
+
+\subsection{Multi-Metric Potential Correctness}
+
+For any given single query, the multi metric potential actually is a time-independent potential which returns exact shortest distance with respect to a valid lower bound weight function.
+Constant potentials trivially adhere to the strong FIFO property.
+Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances by a lower bound weight function are a feasible potential.
+% metric switching?
+
+\subsection{Interval-Minimum Potential Correctness}
+
+The Interval-Minimum Potential is not feasible because we use piecewise constant functions for the the shortcut travel time lower bounds.
+Still, it does satisfy the strong FIFO property because for any given single query, the estimates are constant.
+Moreover, the estimates are lower bounds on the distances.
+This directly follows from the correctness of the CATCHUp preprocessing and the Lazy RPHAST algorithm.
+% metric switching?
 
 % \section{Styles of lists, enumerations, and descriptions}\label{sec:itemStyles}
 
