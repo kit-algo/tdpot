@@ -210,6 +210,7 @@ namespace "exp" do
         ([2, 4, 8, 16, 32, 64] + [10, 20, 30, 40, 50, 60, 70, 80, 90]).each do |k|
           sh "mkdir #{exp_dir}/compression/#{k}" unless Dir.exist? "#{exp_dir}/compression/#{k}"
           sh "mkdir #{exp_dir}/compression_1h/#{k}" unless Dir.exist? "#{exp_dir}/compression_1h/#{k}"
+          sh "mkdir #{exp_dir}/compression_times/#{k}" unless Dir.exist? "#{exp_dir}/compression_times/#{k}"
 
           sh "cargo run --release --bin interval_min_reduction -- #{graph} #{k} customized_corridor_mins reduced_corridor_mins > #{exp_dir}/compression_times/#{k}/$(date --iso-8601=seconds).json"
           sh "numactl -N 1 -m 1 target/release/predicted_queries #{graph} queries/uniform interval_min_pot > #{exp_dir}/compression/#{k}/$(date --iso-8601=seconds).json"
