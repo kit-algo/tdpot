@@ -3,7 +3,8 @@ data_dir = Dir.pwd + '/data'
 
 file "paper/tdpot.pdf" => [
   "paper/tdpot.tex",
-  "paper/fig/ranks.pdf"
+  "paper/fig/perf_over_day.pdf",
+  "paper/fig/ranks.pdf",
 ] do
   Dir.chdir "paper" do
     sh "latexmk -pdf tdpot.tex"
@@ -14,6 +15,13 @@ task default: "paper/tdpot.pdf"
 
 namespace "fig" do
   directory "paper/fig"
+
+  file "paper/fig/perf_over_day.pdf" => FileList[
+    "#{exp_dir}/1h/*.json",
+    "#{exp_dir}/rand/*.json",
+  ] + ["eval/perf_over_day.py", "paper/fig"] do
+    sh "eval/perf_over_day.py"
+  end
 
   file "paper/fig/ranks.pdf" => FileList[
     "#{exp_dir}/rank/*.json",
