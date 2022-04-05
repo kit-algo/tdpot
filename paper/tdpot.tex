@@ -546,6 +546,17 @@ This is because it has more breakpoints per time-dependent edge (124.8 compared 
 %   }
 % }
 
+\begin{figure}
+\centering
+\includegraphics[width=\linewidth]{fig/ranks.pdf}
+\caption{
+TODO
+The boxes cover the range between the first and third quartile.
+The band in the box indicates the median, the whiskers cover 1.5 times the interquartile range.
+All other running times are indicated as outliers.
+}\label{fig:ubs_perf}
+\end{figure}
+
 \subparagraph{Methodology}
 We evaluate our algorithms with batches of 100\,K shortest path queries solved sequentially using three different query sets:
 First, there are random queries where source and target are drawn from all vertices uniformly at random which leads to mostly long-range queries.
