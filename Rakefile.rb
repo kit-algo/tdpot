@@ -5,6 +5,7 @@ file "paper/tdpot.pdf" => [
   "paper/tdpot.tex",
   "paper/fig/perf_over_day.pdf",
   "paper/fig/ranks.pdf",
+  "paper/fig/compression.pdf",
 ] do
   Dir.chdir "paper" do
     sh "latexmk -pdf tdpot.tex"
@@ -28,6 +29,15 @@ namespace "fig" do
     "#{exp_dir}/rank_live/*.json",
   ] + ["eval/ranks.py", "paper/fig"] do
     sh "eval/ranks.py"
+  end
+
+  file "paper/fig/compression.pdf" => FileList[
+    "#{exp_dir}/1h/*.json",
+    "#{exp_dir}/rand/*.json",
+    "#{exp_dir}/compression_1h/**/*.json",
+    "#{exp_dir}/compression/**/*.json",
+  ] + ["eval/compression.py", "paper/fig"] do
+    sh "eval/compression.py"
   end
 end
 
