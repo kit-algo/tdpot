@@ -282,6 +282,7 @@ namespace "exp" do
           sh "cargo run --release --bin multi_metric_pre -- #{graph} > #{exp_dir}/preprocessing/$(date --iso-8601=seconds).json"
           sh "rm -r #{graph}multi_metric_pre"
           sh "rm -r #{graph}multi_metric_pot"
+          sh "cargo run --release --bin cchpot_pre -- #{graph} > #{exp_dir}/preprocessing/$(date --iso-8601=seconds).json"
         end
       end
     end
