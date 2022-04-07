@@ -194,7 +194,7 @@ The arrival at the head $v$ is thus $w(uv)(\tau) + \tau$.
 To simplify notation we will often write $w(uv, \tau)$.
 Further, when it is clear from context that we talk about constant travel time functions, we will omit the time argument and write $w(uv)$.
 We extend the weight function definition to paths:
-The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $w(P, \tau) = w(v_1 v_2, \tau) + w_((v_2,\dots,v_k), \tau + w_{v_1 v_2}(\tau))$.
+The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $w(P, \tau) = w(v_1 v_2, \tau) + w((v_2,\dots,v_k), \tau + w(v_1 v_2, \tau))$.
 We assume that all travel time functions adhere to the \emph{first-in first-out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
 Formally stated this means $\tau + w(\tau) \leq \tau + \epsilon + w(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
 % TODO explain waiting?
@@ -214,7 +214,7 @@ $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{e
 % TODO general td fns vs concrete predicted and combined fns
 
 Our goal is given vertices $s$ and $t$ and an earliest departure $\tdep$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
-We refer to the travel time of this path as $\opttt(s,t,\tdep)$.
+We refer to the travel time of this path as $\dist_c(s,t,\tdep)$.
 
 \subsection{Application Model}
 
@@ -231,7 +231,7 @@ During the third and final \emph{query} phase, many shortest path queries $(s,t,
 \subsection{Dijkstra/A*}
 
 % distance vs arrival times
-Dijkstra's algorithm computes $\opttt(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
+Dijkstra's algorithm computes $\dist_w(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
 The distances from $s$ of each vertex $u$ are tracked in an array $\mathtt{D}[u]$, initially set to $\infty$ for all vertices.
 A priority queue with vertices ordered by their distance from $s$ is maintained.
 The priority queue is initialized with $s$ and $\mathtt{D}[u]$ set to $\tdep$.
@@ -255,7 +255,7 @@ In this paper, we propose time-dependent potentials $\pi_t : V \to (T \to \mathb
 By mapping each vertex to a time-dependent function, we can obtain tighter estimates and accelerate queries further.
 Analogue to classical potentials, there are several important properties when discussing the correctness of potential functions:
 \begin{itemize}
-  \item Feasibility: $w_(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau$
+  \item Feasibility: $w(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau$
   \item Lower bound: $\pi_t(v, \tau) \leq \dist(v,t,\tau)$ for all vertices $v \in V$ and times $\tau$
   \item First-In First-Out (FIFO): $\pi_t(v, \tau) \leq \pi_t(v, \tau + \epsilon) + \epsilon$ for all vertices $v \in V$, times $\tau$ and $\epsilon \geq 0$
 \end{itemize}
@@ -371,7 +371,7 @@ Lazy RPHAST can be applied to CCH without modifications.
 \subsection{Multi-Metric Potential}
 
 We now introduce our first time-dependent potential, the \emph{Multi-Metric Potential}.
-Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \opttt(s,t,\tdep)$ the optimal arrival at the target.
+Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival at the target.
 Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l(e) = \min_{\tau' \leq \tau \leq \tau''}\pred_e(\tau)$.
 Clearly, $\dist_{l}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
 If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too big, the estimates will be significantly tighter than global lower bound distances.
@@ -383,7 +383,11 @@ Efficiently computing distances with respect to the selected weight function is 
 \subparagraph{Preprocessing}
 The very first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute a nested dissection order~\cite{ghuw-fbndocch-19} and construct the unweighted chordally completed augmented graph.
 Now let $I$ be a set of time intervals.
-In our implementation, we use 48 intervals of length 1\,h starting at each full and each half hour, 24 intervals of length 2\,h starting at each full hour, 12 intervals of length 4\,h starting every two hours, 6 intervals of length 8\,h starting every 4 hours, 4 intervals of length 12\,h starting every 6 hours and one interval covering the entire day.
+In our implementation,
+we cover the time between 6:00 and 22:00 with intervals of length one, two, four and eight hours, starting every 30 minutes,
+and one interval covering the entire day.
+We do not keep any additional intervals between 22:00 and 6:00 as during this time most edges will have their freeflow travel time.
+Thus, the weights in these intervals would be equal to the full-day weight function.
 During preprocessing, we extract lower bounds and run the CCH basic customization algorithm for each interval.
 This can be trivially parallelized.
 Also, the customization can be parallelized internally.
@@ -418,7 +422,7 @@ Running Lazy RPHAST on the customized weight function of this interval then yiel
 The \emph{Interval-Minimum Potential} is a time-dependent adaptation of the Lazy RPHAST algorithm.
 Where Lazy RPHAST has a single scalar (lower bound) weight for each edge, the Interval-Minimum Potential has a lower bound function.
 This allows for tighter lower bound estimates but introduces new challenges.
-First, computing an augmented CH graph with time-dependent travel time functions (even with only approximated lower bound functions) is difficult problem on its own an has been subject to study for entire articles~\cite{bgsv-mtdtt-13,swz-sfert-21}.
+First, computing an augmented CH graph with time-dependent travel time functions (even with only approximated lower bound functions) is a difficult problem on its own an has been subject to study for entire articles~\cite{bgsv-mtdtt-13,swz-sfert-21}.
 We therefore utilize the existing CATCHUp algorithm~\cite{swz-sfert-21}.
 Second, storing the travel time functions of an augmented graph can be very expensive in terms of memory consumption.
 Also, the usual representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
@@ -449,26 +453,25 @@ The running time of this phase is again dominated by the construction of the red
 % bound switching
 
 \subparagraph{Query}
-For the query, we build the potential with two instantiations of the Lazy RPHAST algorithm.
+We build the potential with two instantiations of the Lazy RPHAST algorithm.
 The first one works on the graph with the scalar bounds and computes lower and upper bounds on the distance from the source vertex.
 The second one works on the graph with the bucket-based time-dependent lower bound functions.
 The second one uses the first one to determine arrival intervals at each vertex which are in turn used to evaluate outgoing edges.
 
 Choosing the right memory layout for the bucket weights is crucial for the performance of this algorithm.
-We do store all weights of a single bucket consecutively.
+We do store all weights of each bucket consecutively.
 Typically, only few buckets per edge are relevant, because the arrival intervals are relatively tight.
-Also, outgoing all edges of each vertex are evaluated consecutively.
+Also, all outgoing edges of each vertex are evaluated consecutively.
 Thus, having their weights for the same bucket close to each other increases cache hits.
 
 % evaluation time metric pruning
-% correctness
 
 \subsection{Compression}\label{sec:compression}
 
 Both our time-dependent potentials have to store a significant number of weight functions.
 This can lead to problematic memory consumption.
 However, since we only need lower bounds, we can merge lower bound weight functions into a combined weight function with the respective minimum weights and thus reduce the number of weight functions we need to store.
-Thus by trading some lower bound tightness, we can reduce memory consumption.
+Thus, by trading some tightness, we can reduce memory consumption.
 Dealing with merged lower bound functions can be implemented for both potentials with a layer of indirection which maps each bucket or interval to a weight function id.
 Then, when merging to weight functions, we let both buckets/intervals point to the same weight function id.
 
@@ -568,9 +571,13 @@ We use every $2^{i}$th settled vertex as the target of Dijkstra rank $2^i$.
 To evaluate the performance of the preprocessing and update phases, we run them 10 and 100 times, respectively.
 Preprocessing and update phases utilize all cores using 16 threads.
 
-% TODO baseline
+\subparagraph{Algorithms}
+% In our experiments, we run A* with different potentials.
+We denote the Multi-Metric Potentials as MMP and the Interval-Minimum Potential as IMP.
+Additionally, we compare against the time-independent CCH-Potential which is the only other algorithm we are aware of to support our problem model.
+Dijkstra's algorithm without any acceleration is our baseline.
 
-In Table~\ref{tab:pot_perf}, we report key performance results for our time-dependent potential functions.
+\subparagraph{Experiments} In Table~\ref{tab:pot_perf}, we report key performance results for our time-dependent potential functions.
 We observe that IMP is the fastest approach by a significant margin, up to almost an order of magnitude faster than the time-independent CCH-Potential and at least almost two orders of magnitude faster than Dijkstra's algorithm.
 The search space reduction is even stronger but this does not fully translate to running times due to the higher overhead of the IMP.
 With only predicted traffic, it as only two to three times slower than CATCHUp~\cite{swz-sfert-21}.
