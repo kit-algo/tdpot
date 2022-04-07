@@ -121,7 +121,7 @@ A* can be seen as an extension of Dijkstra's algorithm.
 Dijkstra's algorithm explores all vertices closer to the origin than the destination by utilizing a queue where vertices are ordered by their distance from the origin vertex.
 A* changes the order in which vertices are visited by adding an estimate of the remaining distance to the queue key, sometimes called \emph{heuristic} or \emph{potential}.
 The performance depends on the tightness of these estimates.
-The algorithmic core idea of this work are time-dependent potential functions, i.e.\ we obtain tighter estimates by taking the time a vertex is visited into account.
+The algorithmic core idea of this work are time-dependent potential functions, i.e.\ we obtain tighter estimates and therefore faster queries by taking the time a vertex is visited into account.
 
 \subsection{Related Work}
 
@@ -156,13 +156,14 @@ On the benchmark graphs used in this paper, a CATCHUp customization may even tak
 
 A* has also been utilized in speed-up techniques for routing in road networks.
 With ALT~\cite{gh-cspas-05,gw-cppsp-05}, a few landmark vertices are selected during preprocessing.
-From and to these vertices distances to all other vertices are precomputed.
+From and to these vertices, distances to all other vertices are precomputed.
 During queries, these distances are combined with the triangle inequality to obtain distance estimates to the target vertex.
-ALT is quite popular and has also received research interest in areas beyond route planning.
+ALT has also received research interest in areas beyond route planning.
 However, query times are significantly slower than with shortcut-based approaches such as CH or MLD.
 ALT has also been extended to dynamic and time-dependent settings~\cite{dn-crdtd-12}. % combined?
 However, the model studied there is not as general as with customization based approaches.
 % Core-ALT?
+
 Another more recent A*-based approach is CH-Potentials~\cite{strasser_et_al:LIPIcs.SEA.2021.6}.
 As the name suggests, CH-Potentials extract distance estimates from a CH which leads to tighter estimates and faster queries than with ALT.
 For this, the Lazy RPHAST algorithm is introduced which we also heavily use in this work.
