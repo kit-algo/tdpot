@@ -261,15 +261,19 @@ Our proposed potentials heavily rely on this and only compute data for the speci
 
 % \subsection{Contraction Hierarchies}
 
-\emph{Contraction Hierarchies} (CH) is a speed-up technique to accelerate shortest path computations on time-independent road networks through precomputation.
+\emph{Contraction Hierarchies} (CH)~\cite{gssv-erlrn-12} is a speed-up technique to accelerate shortest path computations on time-independent road networks through precomputation.
 For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
 % Here, we briefly introduce necessary notation and concepts used in this paper.
 During the preprocessing, vertices are ordered totally by ``importance'' where more important vertices should lie on more shortest paths.
 Intuitively, vertices on highways are more important than vertices on rural streets.
-Then, an \emph{augmented graph} $G^+$ with additional \emph{shortcut edges} is constructed.
-Shortcut edges are inserted in such a way that between any two vertices $s$ and $t$ there exists a path of shortest distance which uses no vertices less important than $s$ and $t$.
-This allows finding shortest paths by running Dijkstra's algorithm from both $s$ and $t$ and only following edges toward more important vertices.
-For this, we split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u$ is less important than $v$ and $G^{\downarrow}$ vice versa and run Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
+Let $r(v)$ denote the \emph{rank} of vertex $v$ in this order.
+An \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} is constructed.
+We split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $r(u) < r(v)$ and $G^{\downarrow}$ vice versa.
+The shortcuts in $G^+$ are inserted in such a way that between any two vertices $s$ and $t$ there exists a path $P$ with $w(P) = \dist_w(s,t)$ and $r(v) \geq \min(r(s), r(t)) \forall v \in P$.
+Such a path can be found by running Dijkstra's algorithm from both terminals and only following edges toward more important vertices, i.e.\ from $s$ on $\gchu$ and from $t$ on $\gchd$.
+For this, edges $uv \in E^+$ graph get the weight of the shortest path between their endpoints which uses only vertices of lower rank.
+We denote this \emph{lower rank distance} by $\dist^{r<}_w(u,v)$.
+% shortcut weight notation
 
 % \subsection{Lazy RPHAST and CH-Potentials}
 
@@ -321,11 +325,11 @@ The authors of~\cite{dsw-cch-15} proved that all edges whose weights were improv
 Thus, in a final step, edges with changed weights are removed and a \emph{reduced augmented graph} is constructed.
 All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
 
-CATCHUp~\cite{swz-sfert-21} is a time-dependent adaption of CCH, i.e.\ it introduces a time-dependent customization algorithm.
-The CATCHUp basic customization yields for each edge in the augmented graph a \emph{time-dependent} bound functions which correspond to the shortest path between the edges endpoints through lower ranked nodes.
-Also, from these functions scalar bounds can be derived which are typically much tighter than bounds obtained with a time-independent customization on bounds derived from the input functions.
-CATCHUp does not support a time-dependent perfect customization.
-However, a decent number of unnecessary edges can still be identified by running the perfect customization with the tighter scalar upper bounds.
+CATCHUp~\cite{swz-sfert-21} is a time-dependent adaptation of CCH, i.e.\ it introduces a time-dependent customization.
+The CATCHUp \emph{basic} customization yields for each edge in the augmented graph \emph{time-dependent} bound functions which correspond to the shortest path between the edges endpoints through lower ranked nodes.
+From these functions, scalar bounds can be derived which are typically much tighter than bounds obtained by a time-independent customization on input function bounds.
+CATCHUp does not support a time-dependent \emph{perfect} customization.
+However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization with the scalar upper bounds.
 Then, each edge where the upper bound (which bounds the shortest distance between the endpoints) undercuts the lower bound (which is valid for the path represented by the shortcut) can be removed~\cite{swz-sfert-21}.
 % We will also utilize this principle for our time-dependent potentials.
 
