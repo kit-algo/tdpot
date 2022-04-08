@@ -20,7 +20,7 @@
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
 % fast and exact
-\title{Combining Predicted and Live-Traffic with Time-Dependent A* Potentials} %TODO Please add
+\title{Combining Predicted and Live Traffic with Time-Dependent A* Potentials}
 
 %\titlerunning{Dummy short title} %TODO optional, please use if title is longer than one line
 
@@ -138,7 +138,7 @@ On typical continental-sized benchmark instances, queries take well below a mill
 \emph{Multi-Level Dijkstra} (MLD)~\cite{swz-umlgt-02} is a similar approach which also utilizes shortcut edges but inserts them based on a multi-level partitioning.
 It achieves slightly slower query times around a millisecond.
 MLD is popular for being the first algorithm to support the concept of \emph{customizability} and therefore sometimes also referred by \emph{Customizable Route Planning} (CRP)~\cite{dgpw-crprn-13}.
-The \emph{customization} is a second faster preprocessing phase which allows integrating arbitrary weight functions (or live-traffic updates the current weights) into the auxiliary data without rerunning the whole slow first preprocessing phase.
+The \emph{customization} is a second faster preprocessing phase which allows integrating arbitrary weight functions (or live traffic updates the current weights) into the auxiliary data without rerunning the whole slow first preprocessing phase.
 The MLD customization takes a couple of seconds which allows running it every minute.
 CH was later generalized to support customizability as well which resulted in Customizable Contraction Hierarchies (CCH)~\cite{dsw-cch-15}.
 
@@ -151,7 +151,7 @@ However, this is only possible by giving up exactness.
 Also, TD-CRP does not support path unpacking.
 CATCHUp~\cite{swz-sfert-21} adapts CCH to the time-dependent setting and has fast and exact queries with significantly reduced memory consumption.
 While it has a customization phase, running it takes significantly longer than a traditional CCH or CRP customization.
-On the benchmark graphs used in this paper, a CATCHUp customization may even take hours, which is too slow for a live-traffic updates setting.
+On the benchmark graphs used in this paper, a CATCHUp customization may even take hours, which is too slow for a live traffic updates setting.
 % TDS?, (Shark?)
 
 A* has also been utilized in speed-up techniques for routing in road networks.
@@ -176,7 +176,7 @@ In this work, we introduce a time-dependent generalization of A* potentials.
 We then propose two efficient algorithms for such time-dependent A* potentials and discuss how to apply them to efficiently answer queries in a combined live and predicted traffic setting.
 An extensive evaluation confirms the applicability of our algorithms.
 Queries incorporating both predicted and the current traffic can usually be answered within few tenths of milliseconds.
-Live-traffic updates can be integrated within less than a minute.
+Live traffic updates can be integrated within less than a minute.
 Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of magnitude and compared to a time-independent CH-Potential, we achieve a speed-up of up to an order of magnitude.
 % Introduce A* with TDPot
 % Introduce 2 TDPots
@@ -202,27 +202,24 @@ With non-FIFO travel time functions, the shortest path problem becomes \textsf{N
 
 \subsection{Problem Model}
 
-% traffic model
-In our problem model, each edge $e \in E$ has a predicted travel time function $\pred(e)$.
-Predicted travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day of predictions.
-Further, edges may have a currently observed (constant) live travel time $l(e)$ and a point in time $\tau^{\operatorname{end}}(e)$ when we switch back to the predicted travel time.
-We assume that the traffic predictions are a conservative estimate and that live-traffic will always have slower travel times due to accidents and other traffic incidents.
-Thus, we define the combined travel time function of an edge as follows:
+% phases
+We consider an application model with three phases.
+During the \emph{preprocessing} phase, the graph $G=(V,E)$ and a weight function $\pred$ of time-dependent traffic predictions are given.
+Predicted travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day.
+A preprocessing algorithm may now precompute auxiliary data which may take several hours.
+Preprocessing should still be fast enough to rerun it on a daily basis.
+In the \emph{update} phase, a weight function $l$ of currently observed (constant) live travel times are given for the current moment $\tau^{\operatorname{now}}$.
+Further, each edge has a point in time $\tau^{\operatorname{end}}(e)$ when we switch back to the predicted travel time.
+For edges without live traffic data, we set $\tau^{\operatorname{end}}(e) = \tau^{\operatorname{now}}$.
+We assume that traffic predictions are conservative estimates and that live traffic will only be slower due to accidents and other traffic incidents.
+Thus, we define the combined weight function as follows:
 $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{end}}(e)) + \tau^{\operatorname{end}}(e) - \tau))$.
+The update phase will be repeated frequently (every few minutes) and should therefore be as fast as possible.
+% We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
+During the final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible by obtaining the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
 % TODO talk about -1 segment
 % TODO visualize
 % TODO inf
-Our goal is given vertices $s$ and $t$ and an earliest departure $\tdep$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
-
-% phases
-We consider an application model with three phases.
-During the first \emph{preprocessing} phase, the graph topology and traffic predictions are given.
-A preprocessing algorithm may use these inputs to precompute auxiliary data which may take several hours.
-Preprocessing should still be fast enough to rerun it on a daily basis.
-In the second \emph{update} phase, traffic weights are given for the current moment $\tau^{\operatorname{now}}$ and should be incorporated into the precomputed data within as little time as possible.
-This phase may be repeated frequently (every few minutes) to adjust to the current state of traffic.
-We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
-During the third and final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
 
 \subsection{Fundamental Algorithms}
 
@@ -311,10 +308,10 @@ Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
 % relate to td
 
 In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
-For CCH, the construction of the augmented graph is split in two stages.
-In the first stage, the topology of the augmented graph is constructed without considering any weight functions.
+For CCH, the construction of the augmented graph is split in two phases.
+In the first phase, the topology of the augmented graph is constructed without considering any weight functions.
 It therefore is valid for \emph{all} weight functions.
-In the second stage, the \emph{customization}, the weights of the augmented graph are computed for a given weight function on the input network.
+In the second phase, the \emph{customization}, the weights of the augmented graph are computed for a given weight function on the input network.
 It has three steps.
 In the first \emph{basic customization} step, each edge in the augmented graph is processed such that it gets the weight of the shortest path between its endpoints using only lower ranked vertices.
 This is already sufficient to apply the CH query algorithm and compute correct distances.
@@ -369,7 +366,7 @@ This graph contains all edges for which the customized global lower bound weight
 Edges where the upper bound now undercuts the global lower bound are removed in \emph{all} lower bound weights.
 % could do for each weight seperately but not worth it
 Finally, we construct the reduced graph for the upper bound by removing all edges which were improved during its perfect customization.
-The running time of the update phase is dominated by the construction of the reduced graphs.
+The running time of this phase is dominated by the construction of the reduced graphs.
 Parallelizing it is crucial to achieve good running times.
 See~\cite{bsw-rttau-19} for engineering details.
 Note that the graph reduction steps are entirely optional and only serve to optimize query performance.
@@ -585,7 +582,7 @@ The resulting running times are grouped by the departure time hour.
 Introducing live traffic decreases the quality of the potential estimates and thus increases search space sizes and running times.
 For IMP this brings running times up to 38\,ms with heavy traffic which is still more than 90 times faster than Dijkstra's algorithm.
 Surprisingly, for CCH-Potentials and MMP, heavier traffic seems to be easier to handle than lite traffic.
-This is because we set the departures for the queries corresponding to the live-traffic snapshot and use random departures for only predicted traffic.
+This is because we set the departures for the queries corresponding to the live traffic snapshot and use random departures for only predicted traffic.
 However, the departure time has a significant influence on the performance.
 
 Figure~\ref{fig:by_dep} depicts query performance by queried departure time over the course of the day.
@@ -601,7 +598,7 @@ Therefore, MMP may actually be a very simple and practical approach for many pra
 \centering
 \includegraphics[width=\linewidth]{fig/ranks.pdf}
 \caption{
-Box plot of running times of 1000 queries per Dijkstra-rank on PTV Europe with live-traffic and fixed departure at 07:47.
+Box plot of running times of 1000 queries per Dijkstra-rank on PTV Europe with live traffic and fixed departure at 07:47.
 The boxes cover the range between the first and third quartile.
 The band in the box indicates the median, the whiskers cover 1.5 times the interquartile range.
 All other running times are indicated as outliers.
@@ -618,7 +615,7 @@ Only at rank 24, the running times become as slow as the CCH-Potentials baseline
 The reason for the strong jump from 23 to 24 is that the mean query distance jumps from five to six hours on rank 23 to over eight hours which is longer than the longest covered interval.
 Thus on rank 24, the MMP will fill back to a regular CCH-Potential on most queries.
 We also observe a few strong outliers.
-This happens because of blocked streets in the live-traffic data.
+This happens because of blocked streets in the live traffic data.
 When the target vertex of a query is only reachable through a blocked road segment, A* will traverse large parts of the networks until the blocked road opens up.
 This affects all three potentials in the same way.
 
