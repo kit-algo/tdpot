@@ -1,5 +1,5 @@
 
-\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}
+\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate,anonymous]{lipics-v2021}
 %This is a template for producing LIPIcs articles. 
 %See lipics-v2021-authors-guidelines.pdf for further information.
 %for A4 paper format use option "a4paper", for US-letter use option "letterpaper"
@@ -165,8 +165,8 @@ However, the model studied there is not as general as with customization based a
 % Core-ALT?
 
 Another more recent A*-based approach is CH-Potentials~\cite{strasser_et_al:LIPIcs.SEA.2021.6}.
-As the name suggests, CH-Potentials extract distance estimates from a CH which leads to tighter estimates and faster queries than with ALT.
-For this, the Lazy RPHAST algorithm is introduced which we also heavily use in this work.
+CH-Potentials extract exact distances from a CH using Lazy RPHAST which we also heavily use in this work.
+This leads to tighter estimates and faster queries than possible with ALT.
 CH-Potentials can be applied to a variety of routing problem variants and the original publication even mentions a combination of live and predicted traffic.
 However the reported query times are a above 100\,ms which we consider too slow for practical applications.
 
@@ -195,10 +195,13 @@ To simplify notation we will often write $w(uv, \tau)$.
 Further, when it is clear from context that we talk about constant travel time functions, we will omit the time argument and write $w(uv)$.
 We extend the weight function definition to paths:
 The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $w(P, \tau) = w(v_1 v_2, \tau) + w((v_2,\dots,v_k), \tau + w(v_1 v_2, \tau))$.
+We denote the travel time of the shortest path between vertices $s$ and $t$ as $\dist_w(s,t,\tdep)$.
 We assume that all travel time functions adhere to the \emph{first-in first-out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
 Formally stated this means $\tau + w(\tau) \leq \tau + \epsilon + w(\tau + \epsilon)$ for any $\epsilon \in \mathbb{Z}^{\geq 0}$.
 % TODO explain waiting?
 With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{or-tnp-89}.
+
+\subsection{Problem Model}
 
 % traffic model
 In our problem model, each edge $e \in E$ has a predicted travel time function $\pred(e)$.
@@ -210,13 +213,7 @@ $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{e
 % TODO talk about -1 segment
 % TODO visualize
 % TODO inf
-
-% TODO general td fns vs concrete predicted and combined fns
-
 Our goal is given vertices $s$ and $t$ and an earliest departure $\tdep$ to obtain the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
-We refer to the travel time of this path as $\dist_c(s,t,\tdep)$.
-
-\subsection{Application Model}
 
 % phases
 We consider an application model with three phases.
@@ -228,10 +225,10 @@ This phase may be repeated frequently (every few minutes) to adjust to the curre
 We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
 During the third and final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible.
 
-\subsection{Dijkstra/A*}
+\subsection{Fundamental Algorithms}
 
 % distance vs arrival times
-Dijkstra's algorithm computes $\dist_w(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
+\emph{Dijkstra's algorithm} computes $\dist_w(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
 The distances from $s$ of each vertex $u$ are tracked in an array $\mathtt{D}[u]$, initially set to $\infty$ for all vertices.
 A priority queue with vertices ordered by their distance from $s$ is maintained.
 The priority queue is initialized with $s$ and $\mathtt{D}[u]$ set to $\tdep$.
@@ -239,53 +236,36 @@ In each iteration, the next closest vertex $u$ is extracted from the queue and \
 Outgoing edges $uv$ are \emph{relaxed}, i.e.\ the algorithm checks if $\mathtt{D}[u] + w(uv, \mathtt{D}[u])$ improves $\mathtt{D}[v]$.
 If so, the queue position of $v$ is adjusted accordingly.
 Once $t$ was settled, the final distance is known and the search can terminate.
+We denote the vertices visited during a query as \emph{search space}.
 
-% remove?
-Dijkstra's algorithm has a worst case running time of $\mathcal{O}((n + m) \log n)$ when the queue is implemented as a $k$-ary heap.
-In the presence of negative edge weights, Dijkstra still will find correct shortest distances, as long as there are no negative cycles.
-However, distances may not be final anymore after a vertex was settled.
-The algorithm is then denoted as \emph{label-correcting} instead of \emph{label-setting}.
-
-% search space
 % heurisitc vs potential
 A* is an extension of Dijkstra's algorithm where the search is guided towards the target through a potential function $\pi_t$ which estimates the remaining distance to the target.
 This estimate is added to the queue key.
 Thus, vertices closer to the target a visited earlier and the search space becomes smaller.
 In this paper, we propose time-dependent potentials $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$.
-By mapping each vertex to a time-dependent function, we can obtain tighter estimates and accelerate queries further.
-Analogue to classical potentials, there are several important properties when discussing the correctness of potential functions:
+By taking the time a vertex is visited into account, we can obtain tighter estimates and thus faster queries.
+% Analogue to classical potentials, t
+There are three important properties of time-dependent potentials to consider when arguing about the correctness of A*:
 \begin{itemize}
-  \item Feasibility: $w(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau$
-  \item Lower bound: $\pi_t(v, \tau) \leq \dist(v,t,\tau)$ for all vertices $v \in V$ and times $\tau$
-  \item First-In First-Out (FIFO): $\pi_t(v, \tau) \leq \pi_t(v, \tau + \epsilon) + \epsilon$ for all vertices $v \in V$, times $\tau$ and $\epsilon \geq 0$
+  \item Lower bound: $\pi_t(v, \tau) \leq \dist(v,t,\tau)$ for all vertices $v \in V$ and times $\tau = \dist_w(s,v,\tdep)$.
+  A* with a lower bound potential will have found the correct distance once the target vertex is settled.
+  However, with only lower bound potentials, A* may settle vertices multiple times.
+  In theory, this can lead to exponential running time.
+  \item Feasibility: $w(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau > \dist_w(s,u,\tdep)$.
+  A* is equivalent to Dijkstra's algorithm on a graph with modified weights.
+  When feasibility holds, these modified weights are positive which implies correctness.
+  When $\pi_t(t, \tau) = 0$, feasibility also implies the lower bound property.
+  \item First-In First-Out (FIFO): $\pi_t(v, \tau) \leq \pi_t(v, \tau + \epsilon) + \epsilon$ for $v \in V$, $\tau > \dist_w(s,u,\tdep)$ and $\epsilon \geq 0$.
+  It must always hold or worse distances might have better queue keys.
+  % This property has no time-independent equivalent because it trivially holds in this case.
 \end{itemize}
-The FIFO property must hold for all time-dependent potentials for A* to work properly.
-For feasible potentials, A* is label-setting and a running time of $\mathcal{O}((n + m) \log n)$ is guaranteed.
-With lower-bound potentials, A* may be label-correcting but will have determined the shortest distance once $t$ is settled for the \emph{first} time.
-To answer a concrete query $s,t,\tdep$ it is actually sufficient to fulfill these properties only for very specific instants, i.e.\ for $\tau = \dist(s,u, \tdep)$ the best possible arrival at each vertex $u$.
-Our proposed potentials heavily rely on this and only compute potential data for the specific moments necessary to answer a query correctly.
-In Appendix~\ref{sec:correctness} we derive and discuss the correctness properties in detail, formally prove that queries will be answered correctly with these properties and also give proofs for the potentials proposed in the next section.
+In Appendix~\ref{sec:correctness} we derive and discuss these correctness properties in detail and formally prove that queries will be answered correctly with these properties.
+Note that these properties only need to hold for certain times $\tau$.
+Our proposed potentials heavily rely on this and only compute data for the specific times necessary to answer a query correctly.
 
-% The queue is ordered by $\mathtt{D}[u] + \pi_t(u)$.
-% A* is equivalent to running Dijkstra's algorithm on a graph with modified weights $w'_{uv} = w_{uv} + \pi_t(v) - \pi_t(u)$.
-% If this modified weight is non-negative for all weights, a potential function is called \emph{feasible}.
-% For feasible potentials, A* has the same theoretical worst-case running time as Dijkstra's algorithm and will always have obtained the optimal distance once $t$ was settled.
-% A* will also obtain correct results when $\pi_t(v) \leq \dist(v, t)$ for all vertices $v \in V$. % TODO proof
-% Even when the modified weights may have negative weights, all vertices on the shortest path will have a queue key smaller than the target.
-% Thus, we can prove inductively, that the shortest path and distance will have been found, once $t$ is settled.
-% Nevertheless, the label-setting property is not given anymore and vertices other than $t$ may be settled multiple time.
-% The theoretical worst-case running time can also not be guaranteed anymore.
+% \subsection{Contraction Hierarchies}
 
-% We now generalize the notion of potentials to the time-dependent setting and propose \emph{time-dependent potentials}.
-% % TODO time domain
-% A time-dependent potential maps a vertex to a time-dependent function $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$.
-% The function maps instant to an estimate of the remaining travel time to the target.
-
-
-
-\subsection{Contraction Hierarchies}
-
-\emph{Contraction Hierarchies} (CH) is a speed-up technique to accelerate shortest path computations on road networks through precomputation.
+\emph{Contraction Hierarchies} (CH) is a speed-up technique to accelerate shortest path computations on time-independent road networks through precomputation.
 For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
 % Here, we briefly introduce necessary notation and concepts used in this paper.
 During the preprocessing, vertices are ordered totally by ``importance'' where more important vertices should lie on more shortest paths.
@@ -293,57 +273,9 @@ Intuitively, vertices on highways are more important than vertices on rural stre
 Then, an \emph{augmented graph} $G^+$ with additional \emph{shortcut edges} is constructed.
 Shortcut edges are inserted in such a way that between any two vertices $s$ and $t$ there exists a path of shortest distance which uses no vertices less important than $s$ and $t$.
 This allows finding shortest paths by running Dijkstra's algorithm from both $s$ and $t$ and only following edges toward more important vertices.
-Formally, we split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u$ is less important than $v$ and $G^{\downarrow}$ vice versa and run Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
+For this, we split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u$ is less important than $v$ and $G^{\downarrow}$ vice versa and run Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
 
-In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
-For CCH, the construction of the augmented graph is split in three stages.
-First, the vertex ordering is obtained using nested dissection.
-A balanced vertex separator is computed heuristically and the vertices in it are assigned the highest importance.
-The process is then recursively applied to all cells.
-In the second stage the topology of the augmented graph is computed.
-For this, vertices are processed by ascending importance.
-For every vertex, its neighborhood of more important vertices is completed to form a clique.
-
-In the final stage, the \emph{customization}, the weights of the augmented graph are computed.
-The first step of the customization is to apply the current weights to the respective edge weights in the augmented graph.
-All other edges in the augmented graph are set to $\infty$.
-In the second step, the algorithm iterates over all edges $uv$ ordered increasingly by the ranks of the endpoints.
-For each edge, all \emph{lower triangles} $(u,w,v)$ where both $uw$ and $wv \in E^+$ and $w$ has a smaller importance than both $u$ and $v$ are enumerated and relaxed, i.e.\ if $w(uv)$ is set to $\min(w(uv), w((u,w,v)))$.
-Now, each edge has the weight of the shortest path using only lower ranked vertices which is sufficient to allow applying the CH query algorithm.
-% basic customization
-However, not all of these edges are necessary.
-In an optional further step, the \emph{perfect customization}, unnecessary edges are identified.
-For this, all edges are processed again but this time in a top-down fashion, i.e\ ordered decreasingly by the ranks of the endpoints.
-Now, for each edge, all \emph{intermediate triangles} and \emph{upper triangles} $(u,w,v)$ where both $uw$ and $wv \in E^+$ and $w$ has a smaller importance than either $u$ and $v$ are enumerated and relaxed, i.e.\ if $w(uv)$ is set to $\min(w(uv), w((u,w,v)))$.
-Now, each edge in the augmented graph has the weight of the shortest distance between its endpoints.
-The authors of~\cite{dsw-cch-15} proved that only edges for which the weight remained unchanged during the perfect customization are necessary to guarantee the correctness of the CH query algorithm.
-Thus, in a final step all edges with changed weights are removed and a \emph{reduced augmented graph} is constructed.
-% perfect not always necessary
-
-CATCHUp~\cite{swz-sfert-21} is a time-dependent adaption of CCH.
-In this paper, we utilize its preprocessing as a block box.
-This gives us for each edge in the augmented a relatively tight lower bound approximation of the shortest path through lower ranked nodes, i.e.\ the result of a time-dependent basic customization.
-Further, we get tighter scalar lower and upper bounds than we would get by applying the classical customization algorithms on constant upper and lower bound weight functions.
-CATCHUp does not support a time-dependent perfect customization.
-However, a decent number of edges can still be removed by utilizing the scalar bounds.
-For this, the perfect customization is run on scalar upper bounds.
-Then for each bound the lower bound (which is valid for the path represented by the shortcut) can be compared to the upper bound (which is a bound on the shortest distance between the endpoints).
-Each edge where the shortest path upper bound is smaller then the shortcut lower bound can be removed~\cite{swz-sfert-21}.
-We will also utilize this principle for our time-dependent potentials.
-
-\subsection{Lazy RPHAST and CH-Potentials}
-
-Lazy RPHAST~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a CH-based algorithm to incrementally compute distances from many sources toward a common target
-It is a variant of the CH query algorithm where one half of the search is replaced with a recursive depth-first search (DFS) which memoizes distances.
-Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
-The first step is a run Dijkstra's algorithm on $\gchd$ from the target.
-Then, the main routing depicted in Algorithm~\ref{algo:lazy_rphast} can be called for every source to obtain the shortest distance to the target.
-If the distance of a vertex was previously computed, the routine terminates immediately and returns the memoized value.
-Otherwise, the distance is computed as the minimum over the recursively computed distances of the upward neighbors plus the respective edge weights and the distance possibly found in the backward search.
-Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
-Lazy RPHAST can be applied to CCH without modifications.
-% low deg optimizations
-% relate to td
+% \subsection{Lazy RPHAST and CH-Potentials}
 
 \begin{algorithm2e}
 \KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on $\gchd$}
@@ -353,9 +285,9 @@ Lazy RPHAST can be applied to CCH without modifications.
 \Fn{\Dist{$u$}}{
     \If{$\mathtt{D}[u] = \bot$}{
         $\mathtt{D}[u]\leftarrow \mathtt{D}^{\downarrow}[u]$\;
-        \For{all arcs $uv$ in $\gchu$}{
+        \For{all edges $uv$ in $\gchu$}{
             $d \leftarrow \Dist(v)$\;
-            \If{$\mathtt{D}[u] < d + w(uv)$}{
+            \If{$d + w(uv) < \mathtt{D}[u]$}{
                 $\mathtt{D}[u] \leftarrow d + w(uv)$\;
             }
         }
@@ -365,6 +297,41 @@ Lazy RPHAST can be applied to CCH without modifications.
 \caption{Computing the distance from a single vertex $u$ to $t$ with Lazy RPHAST}
 \label{algo:lazy_rphast}
 \end{algorithm2e}
+
+\emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a CH query variant to incrementally compute distances from many sources toward a common target.
+The first step is a run Dijkstra's algorithm on $\gchd$ from the target similarly to a regular CH query.
+The other Dijkstra search is replaced with a recursive depth-first search (DFS) which memoizes distances.
+Algorithm~\ref{algo:lazy_rphast} depicts this routine which will be called all sources.
+If the distance of a vertex $u$ was previously computed, the routine terminates immediately and returns the memoized value $\mathtt{D}[u]$.
+Otherwise, the distance for all upward neighbors $v$ is obtained recursively.
+The final distance is the minimum over the paths distances $w(uv) + \mathtt{D}[v]$ through the upward neighbors and the distance possibly found in the backward search $\mathtt{D}^{\downarrow}[u]$.
+% Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
+Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
+% Lazy RPHAST can be applied to CCH without modifications.
+% low deg optimizations
+% relate to td
+
+In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
+For CCH, the construction of the augmented graph is split in two stages.
+In the first stage, the topology of the augmented graph is constructed without considering any weight functions.
+It therefore is valid for \emph{all} weight functions.
+In the second stage, the \emph{customization}, the weights of the augmented graph are computed for a given weight function on the input network.
+It has three steps.
+In the first \emph{basic customization} step, each edge in the augmented graph is processed such that it gets the weight of the shortest path between its endpoints using only lower ranked vertices.
+This is already sufficient to apply the CH query algorithm and compute correct distances.
+However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
+In the \emph{perfect customization}, edges are processed again such that every edge now gets the weight of the shortest path between its endpoints without restrictions.
+The authors of~\cite{dsw-cch-15} proved that all edges whose weights were improved during the perfect customization are not necessary to answer queries correctly.
+Thus, in a final step, edges with changed weights are removed and a \emph{reduced augmented graph} is constructed.
+All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
+
+CATCHUp~\cite{swz-sfert-21} is a time-dependent adaption of CCH, i.e.\ it introduces a time-dependent customization algorithm.
+The CATCHUp basic customization yields for each edge in the augmented graph a \emph{time-dependent} bound functions which correspond to the shortest path between the edges endpoints through lower ranked nodes.
+Also, from these functions scalar bounds can be derived which are typically much tighter than bounds obtained with a time-independent customization on bounds derived from the input functions.
+CATCHUp does not support a time-dependent perfect customization.
+However, a decent number of unnecessary edges can still be identified by running the perfect customization with the tighter scalar upper bounds.
+Then, each edge where the upper bound (which bounds the shortest distance between the endpoints) undercuts the lower bound (which is valid for the path represented by the shortcut) can be removed~\cite{swz-sfert-21}.
+% We will also utilize this principle for our time-dependent potentials.
 
 \section{Algorithms}
 
@@ -662,6 +629,7 @@ The IMP, which achieves much greater speed-ups is less robust against compressio
 Nevertheless, we can reduce the memory consumption by a factor of about three (to 32 functions) and still achieve very decent query running times.
 With 32 functions, the absolute memory consumption goes down to less than 20\,GB which is quite manageable.
 % on long range queries still when reduced to 4 faster than MMP
+% TODO compression running time and parallelization
 
 \section{Conclusion}
 
