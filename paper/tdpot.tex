@@ -173,11 +173,11 @@ However the reported query times are a above 100\,ms which we consider too slow 
 \subsection{Contribution}
 
 In this work, we introduce a time-dependent generalization of A* potentials.
-We then propose two efficient algorithms for such time-dependent A* potentials and discuss how to apply them to efficiently answer queries in a combined live and predicted traffic setting.
+We propose two efficient incarnations of time-dependent A* potentials and discuss how to apply them to efficiently answer queries in a combined live and predicted traffic setting.
 An extensive evaluation confirms the applicability of our algorithms.
 Queries incorporating both predicted and the current traffic can usually be answered within few tenths of milliseconds.
-Live traffic updates can be integrated within less than a minute.
-Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of magnitude and compared to a time-independent CH-Potential, we achieve a speed-up of up to an order of magnitude.
+Live traffic updates can be integrated within a fraction of a minute.
+Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of magnitude and compared to the time-independent CH-Potential, we achieve a speed-up of up to an order of magnitude.
 % Introduce A* with TDPot
 % Introduce 2 TDPots
 % Show how to apply them to live traffic
@@ -235,11 +235,12 @@ Once $t$ was settled, the final distance is known and the search can terminate.
 We denote the vertices visited during a query as \emph{search space}.
 
 % heurisitc vs potential
-A* is an extension of Dijkstra's algorithm where the search is guided towards the target through a potential function $\pi_t$ which estimates the remaining distance to the target.
+A* is an extension of Dijkstra's algorithm where the search is guided towards the target through a potential function $\pi_t$ which maps vertices to an estimate of the remaining distance.
 This estimate is added to the queue key.
 Thus, vertices closer to the target a visited earlier and the search space becomes smaller.
-In this paper, we propose time-dependent potentials $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$.
-By taking the time a vertex is visited into account, we can obtain tighter estimates and thus faster queries.
+%
+In this work, we use a time-dependent generalization, i.e.\ $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$ distance estimates are a function of the time.
+This allows us to obtain tighter estimates and enables faster queries.
 % Analogue to classical potentials, t
 There are three important properties of time-dependent potentials to consider when arguing about the correctness of A*:
 \begin{itemize}
@@ -262,33 +263,40 @@ Our proposed potentials heavily rely on this and only compute data for the speci
 % \subsection{Contraction Hierarchies}
 
 \emph{Contraction Hierarchies} (CH)~\cite{gssv-erlrn-12} is a speed-up technique to accelerate shortest path computations on time-independent road networks through precomputation.
-For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
+% For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
 % Here, we briefly introduce necessary notation and concepts used in this paper.
-During the preprocessing, vertices are ordered totally by ``importance'' where more important vertices should lie on more shortest paths.
+During the preprocessing, a total order $v_1 < \dots < v_n$ among all vertices $v_i \in V$ by ``importance'' is determined heuristically, where more important vertices should lie on more shortest paths.
 Intuitively, vertices on highways are more important than vertices on rural streets.
-Let $r(v)$ denote the \emph{rank} of vertex $v$ in this order.
-An \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} is constructed.
-We split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $r(u) < r(v)$ and $G^{\downarrow}$ vice versa.
-The shortcuts in $G^+$ are inserted in such a way that between any two vertices $s$ and $t$ there exists a path $P$ with $w(P) = \dist_w(s,t)$ and $r(v) \geq \min(r(s), r(t)) \forall v \in P$.
-Such a path can be found by running Dijkstra's algorithm from both terminals and only following edges toward more important vertices, i.e.\ from $s$ on $\gchu$ and from $t$ on $\gchd$.
-For this, edges $uv \in E^+$ graph get the weight of the shortest path between their endpoints which uses only vertices of lower rank.
-We denote this \emph{lower rank distance} by $\dist^{r<}_w(u,v)$.
+Then, an \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} and weights $w^+$ is constructed.
+Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i < u, x_i < v$.
+Therefore, $w^+(uv)$ gets the length of the shortest such path which we denote by $\dist^<(u,v)$.
+The resulting augmented graph has the property that between any two vertices $s$ and $t$ there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \geq \min(s, t) \forall v \in P$.
+Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ and $t$ on $G^+$ while following only edges towards more important vertices.
+Because only few vertices are reachable in this \emph{CH search space}, queries are very fast.
+
+% The shortcuts in $G^+$ are inserted in such a way that
+
+% We split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u < v$ and $G^{\downarrow}$ vice versa.
+% For this, the weights $w^+(uv)$ must have the length of the shortest path the shortcut ``skips over'', i.e.\ $w^+(uv) = \dist_{[R(u,v)]}(u,v)$.
+
+% For this, edges $uv \in E^+$ graph get the weight of the shortest path between their endpoints which uses only vertices of lower rank.
+% We denote this \emph{lower rank distance} by $\dist^<_w(u,v)$.
 % shortcut weight notation
 
 % \subsection{Lazy RPHAST and CH-Potentials}
 
 \begin{algorithm2e}
-\KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on $\gchd$}
+\KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on the reversed $G^+$ following only edges towards more important vertices}
 \KwData{$\mathtt{D}[u]$: memoized final distance from $u$ to $t$, initially $\bot$}
 \SetKwFunction{Dist}{ComputeAndMemoizeDist}
 \SetKwProg{Fn}{Function}{:}{}
 \Fn{\Dist{$u$}}{
     \If{$\mathtt{D}[u] = \bot$}{
         $\mathtt{D}[u]\leftarrow \mathtt{D}^{\downarrow}[u]$\;
-        \For{all edges $uv$ in $\gchu$}{
+        \For{all edges $uv \in E^+$ where $u < v$}{
             $d \leftarrow \Dist(v)$\;
-            \If{$d + w(uv) < \mathtt{D}[u]$}{
-                $\mathtt{D}[u] \leftarrow d + w(uv)$\;
+            \If{$d + w^+(uv) < \mathtt{D}[u]$}{
+                $\mathtt{D}[u] \leftarrow d + w^+(uv)$\;
             }
         }
     }
@@ -299,12 +307,12 @@ We denote this \emph{lower rank distance} by $\dist^{r<}_w(u,v)$.
 \end{algorithm2e}
 
 \emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a CH query variant to incrementally compute distances from many sources toward a common target.
-The first step is a run Dijkstra's algorithm on $\gchd$ from the target similarly to a regular CH query.
+The first step is a run Dijkstra's algorithm on the reversed augmented graph while following only edges towards more important vertices from $t$ similarly to a regular CH query.
 The other Dijkstra search is replaced with a recursive depth-first search (DFS) which memoizes distances.
-Algorithm~\ref{algo:lazy_rphast} depicts this routine which will be called all sources.
+Algorithm~\ref{algo:lazy_rphast} depicts this routine which will be called for all sources.
 If the distance of a vertex $u$ was previously computed, the routine terminates immediately and returns the memoized value $\mathtt{D}[u]$.
 Otherwise, the distance for all upward neighbors $v$ is obtained recursively.
-The final distance is the minimum over the paths distances $w(uv) + \mathtt{D}[v]$ through the upward neighbors and the distance possibly found in the backward search $\mathtt{D}^{\downarrow}[u]$.
+The final distance is the minimum over the paths distances $w^+(uv) + \mathtt{D}[v]$ through the upward neighbors and the distance possibly found in the backward search $\mathtt{D}^{\downarrow}[u]$.
 % Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
 Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
 % Lazy RPHAST can be applied to CCH without modifications.
@@ -315,23 +323,24 @@ In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite
 For CCH, the construction of the augmented graph is split in two phases.
 In the first phase, the topology of the augmented graph is constructed without considering any weight functions.
 It therefore is valid for \emph{all} weight functions.
-In the second phase, the \emph{customization}, the weights of the augmented graph are computed for a given weight function on the input network.
+In the second phase, the \emph{customization}, the weights $w^+$ of the augmented graph are computed for a given weight function $w$.
 It has three steps.
-In the first \emph{basic customization} step, each edge in the augmented graph is processed such that it gets the weight of the shortest path between its endpoints using only lower ranked vertices.
+In the first \emph{basic customization} step, each edge $uv \in E^+$ is processed such that $w^+(uv) = \dist^<(u,v)$.
 This is already sufficient to apply the CH query algorithm and compute correct distances.
 However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
-In the \emph{perfect customization}, edges are processed again such that every edge now gets the weight of the shortest path between its endpoints without restrictions.
-The authors of~\cite{dsw-cch-15} proved that all edges whose weights were improved during the perfect customization are not necessary to answer queries correctly.
-Thus, in a final step, edges with changed weights are removed and a \emph{reduced augmented graph} is constructed.
+In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
+The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
+Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} is constructed.
 All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
 
 CATCHUp~\cite{swz-sfert-21} is a time-dependent adaptation of CCH, i.e.\ it introduces a time-dependent customization.
-The CATCHUp \emph{basic} customization yields for each edge in the augmented graph \emph{time-dependent} bound functions which correspond to the shortest path between the edges endpoints through lower ranked nodes.
-From these functions, scalar bounds can be derived which are typically much tighter than bounds obtained by a time-independent customization on input function bounds.
+The CATCHUp \emph{basic} customization yields for each edge in $uv \in E^+$ \emph{time-dependent} bound functions $\underline{b^+}$ and $\overline{b^+}$ for $\dist^<_w(u,v)$.
+From these functions, scalar bounds $b^+_{\min}$ and $b^+_{\max}$ can be derived which are typically much tighter than bounds obtained by a time-independent customization on input function bounds, i.e.\ $w^+_{\min}$ and $w^+_{\max}$.
 CATCHUp does not support a time-dependent \emph{perfect} customization.
-However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization with the scalar upper bounds.
-Then, each edge where the upper bound (which bounds the shortest distance between the endpoints) undercuts the lower bound (which is valid for the path represented by the shortcut) can be removed~\cite{swz-sfert-21}.
-% We will also utilize this principle for our time-dependent potentials.
+However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization on $b^+_{\max}$ which yields $b^*_{\max}$.
+Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed~\cite{swz-sfert-21}.
+
+% We will also utilize this insight for our time-dependent potentials.
 
 \section{Time-Dependent A* Potentials}
 
