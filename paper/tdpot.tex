@@ -239,7 +239,7 @@ A* is an extension of Dijkstra's algorithm where the search is guided towards th
 This estimate is added to the queue key.
 Thus, vertices closer to the target a visited earlier and the search space becomes smaller.
 %
-In this work, we use a time-dependent generalization, i.e.\ $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$ distance estimates are a function of the time.
+In this work, we use a time-dependent generalization $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$ of A* potentials, i.e.\ estimates are a function of the time.
 This allows us to obtain tighter estimates and enables faster queries.
 % Analogue to classical potentials, t
 There are three important properties of time-dependent potentials to consider when arguing about the correctness of A*:
@@ -330,7 +330,7 @@ This is already sufficient to apply the CH query algorithm and compute correct d
 However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
 In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
 The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
-Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} is constructed.
+Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} $G*=(V, E*)$ is constructed.
 All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
 
 CATCHUp~\cite{swz-sfert-21} is a time-dependent adaptation of CCH, i.e.\ it introduces a time-dependent customization.
@@ -348,8 +348,8 @@ Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(u
 
 We now introduce our first time-dependent potential, the \emph{Multi-Metric Potential}.
 Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival at the target.
-Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l(e) = \min_{\tau' \leq \tau \leq \tau''}\pred_e(\tau)$.
-Clearly, $\dist_{l}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
+Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l_{[\tau', \tau'']}(e) = \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
+Clearly, $\dist_{l_{[\tau', \tau'']}}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
 If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too big, the estimates will be significantly tighter than global lower bound distances.
 The \emph{Multi-Metric Potential} is based on this observation.
 Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions valid for different time intervals.
@@ -357,38 +357,38 @@ At query time, we then select an appropriate weight function.
 Efficiently computing distances with respect to the selected weight function is done with the Lazy RPHAST.
 
 \subparagraph{Preprocessing}
-The very first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute a nested dissection order~\cite{ghuw-fbndocch-19} and construct the unweighted chordally completed augmented graph.
-% Now let $I$ be a set of time intervals.
+The very first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute an importance ordering and construct the unweighted augmented graph.
+Now let $I$ be a set of time intervals.
 In our implementation,
 we cover the time between 6:00 and 22:00 with intervals of length one, two, four and eight hours, starting every 30 minutes,
 and one interval covering the entire day.
 We do not keep any additional intervals between 22:00 and 6:00 as most edges will have their freeflow travel time during this time.
-Thus, the weights in these intervals would be equal to the full-day weight function.
-During preprocessing, we extract lower bounds and run the CCH basic customization algorithm for each interval.
+Thus, the lower bound weights in these intervals would be equal to the full-day lower bounds.
+During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l_{[\tau_i', \tau_i'']}$ and run the CCH basic customization algorithm for each interval to obtain $l_{[\tau_i', \tau_i'']}^+$.
 This can be trivially parallelized.
 Also, the customization can be parallelized internally.
-For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19}.
+For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19,ghuw-fbndocch-19}.
 
 \subparagraph{Update}
-We compute an additional lower bound weight function of length 59\,minutes starting at $\tau^{\operatorname{now}}$ which incorporates the current live traffic situation.
-Further, we extract an upper bound weight function for the entire day valid with respect to both the predicted and the live traffic.
-We then run both the basic and the perfect customization algorithms for the upper bound without constructing a reduced augmented graph.
-Recall that after the perfect customization, each edge in the CCH has the length of the shortest distance between its endpoints.
-We now construct a reduced augmented graph for all lower bounds at once.
-This graph contains all edges for which the customized global lower bound weight is not greater than the customized upper bound.
+We compute an additional lower bound weight function for $[\tau^{\operatorname{now}}, \tau^{\operatorname{now}} + 59\,\operatorname{minutes}]$ which incorporates the current live traffic situation $\comb$.
+Further, we extract an upper bound weight function $\comb_{\max}$ valid for the entire day with respect to both the predicted and the live traffic.
+We then run both the basic and the perfect customization algorithms for the upper bound and obtain $\comb^*_{\max}$.
+Recall that after the perfect customization, each edge $uv \in E^+$ has the length of the shortest distance between its endpoints $\dist_{\comb_{\max}}(u,v)$.
+We now construct a reduced augmented graph $G^*_l$ for all lower bounds at once.
+This graph contains all edges $uv \in E^+$ for which the customized global lower bound weight is not greater than the customized upper bound, i.e.\ $l_{[0:00, 24:00]}^+(uv) \leq \comb^*_{\max}(uv)$.
 Edges where the upper bound now undercuts the global lower bound are removed in \emph{all} lower bound weights.
 % could do for each weight seperately but not worth it
-Finally, we construct the reduced graph for the upper bound by removing all edges which were improved during its perfect customization.
+Finally, we construct the reduced graph $G^*_{\comb_{\max}}$ for the upper bound by removing all edges $uv$ where $\comb^*_{\max}(uv) < \comb^+_{\max}(uv)$.
 The running time of this phase is dominated by the construction of the reduced graphs.
 Parallelizing it is crucial to achieve good running times.
 See~\cite{bsw-rttau-19} for engineering details.
-Note that the graph reduction steps are entirely optional and only serve to optimize query performance.
+Note that the graph reduction steps are optional and only serve to optimize query performance.
 In case update running times are critical, the graph reduction can be skipped which will slightly worsen the query performance.
 
 \subparagraph{Query}
 We perform a classical CCH query on the customized upper bound to obtain a pessimistic estimate of $\tmax$.
-We then select the shortest lower bound interval which still fully includes $[\tdep,\tmax]$.
-Running Lazy RPHAST on the customized weight function of this interval then yields the potential function.
+We then select the shortest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
+Running Lazy RPHAST on $G^*_l$ with the customized weight function $l_{[\tau_i', \tau_i'']}^+$ of this interval yields the desired potential function.
 % Metric switching
 
 \subparagraph{Correctness}
