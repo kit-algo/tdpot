@@ -38,7 +38,7 @@
 \ccsdesc[300]{Mathematics of computing~Graph algorithms}
 \ccsdesc[500]{Applied computing~Transportation}
 
-\keywords{realistic road networks, route planning, shortest paths, traffic-aware routing, live traffic} %TODO mandatory; please add comma-separated list of keywords
+\keywords{realistic road networks, shortest paths, live traffic, time-dependent routing} %TODO mandatory; please add comma-separated list of keywords
 
 % \category{} %optional, e.g. invited paper
 
@@ -91,10 +91,19 @@
 
 %TODO mandatory: add short abstract of the document
 \begin{abstract}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti. 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti.
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti.
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti.
+We study efficient and exact shortest path algorithms for routing on road networks with realistic traffic data.
+For navigation applications, both predictions of future traffic flows and current traffic events play an important role in routing.
+% In this work, we propose a combined model which integrates both aspects.
+While preprocessing-based speedup techniques have been employed successfully to both settings individually, supporting a combined model poses significant challenges.
+Supporting predicted traffic typically requires expensive and complex preprocessing while live traffic requires fast updates for regular adjustments.
+We propose an A*-based solution to this problem.
+To enable fast queries, we generalize A* potentials to time-dependency, i.e.\ estimates of the remaining distance also depended on the time a vertex is visited.
+We then present, implement and evaluate two realizations of time-dependent potentials.
+% propose td pots for better estimates and better usage of preprocessing to achieve faster TD queries than previously possible with A*
+% becasue pots need not be exact higher flexibility to support live traffic
+An experimental evaluation confirms the applicability of our potentials.
+Live traffic updates can be realized within a fraction of a minute.
+Queries can be answered two orders of magnitude faster than with Dijkstra's algorithm achieving almost real-time performance.
 \end{abstract}
 
 \section{Introduction}
@@ -173,9 +182,9 @@ However the reported query times are a above 100\,ms which we consider too slow 
 \subsection{Contribution}
 
 In this work, we introduce a time-dependent generalization of A* potentials.
-We propose two efficient incarnations of time-dependent A* potentials and discuss how to apply them to efficiently answer queries in a combined live and predicted traffic setting.
+We propose two simple and efficient realizations of time-dependent A* potentials and discuss how to apply them to answer queries in a combined live and predicted traffic setting.
 An extensive evaluation confirms the applicability of our algorithms.
-Queries incorporating both predicted and the current traffic can usually be answered within few tenths of milliseconds.
+Queries incorporating both predicted and the current traffic can be answered within few tenths of milliseconds.
 Live traffic updates can be integrated within a fraction of a minute.
 Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of magnitude and compared to the time-independent CH-Potential, we achieve a speed-up of up to an order of magnitude.
 % Introduce A* with TDPot
@@ -330,7 +339,7 @@ This is already sufficient to apply the CH query algorithm and compute correct d
 However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
 In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
 The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
-Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} $G*=(V, E*)$ is constructed.
+Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} $G^*=(V, E^*)$ is constructed.
 All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
 
 CATCHUp~\cite{swz-sfert-21} is a time-dependent adaptation of CCH, i.e.\ it introduces a time-dependent customization.
