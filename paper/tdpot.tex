@@ -85,6 +85,7 @@
 \newcommand*{\echd}{\overleftarrow{E^{\downarrow}}}
 
 \newcommand*{\pcfn}{\underline{b'^+}}
+\newcommand*{\bucketlen}{x}
 
 \usepackage[algo2e,vlined]{algorithm2e}
 \usepackage{booktabs}
@@ -281,7 +282,7 @@ During the preprocessing, a total order $v_1 < \dots < v_n$ among all vertices $
 Intuitively, vertices on highways are more important than vertices on rural streets.
 Then, an \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} and weights $w^+$ is constructed.
 Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i < u \land x_i < v$.
-Therefore, $w^+(uv)$ gets the length of the shortest such path which we denote by $\dist^<(u,v)$.
+Therefore, $w^+(uv)$ gets the length of the shortest such path.
 We sometime refer to $G^+$ split into an upward graph $\gchu = (V, \echu)$ which contains only edges $uv$ where $v > u$ and a downward graph $G^{\downarrow} = (V, E^{\downarrow})$ vice versa.
 The augmented graph has the property that between any two vertices $s$ and $t$ there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \geq \min(s, t) \forall v \in P$.
 Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
@@ -328,11 +329,6 @@ Using a DFS to compute shortest distances works because $\gchu$ is a directed ac
 Using Lazy RPHAST as an A* potential is called \emph{(C)CH-Potentials}.
 The authors of~\cite{strasser_et_al:LIPIcs.SEA.2021.6} describe additional optimizations for A* which we also utilize.
 The goal is to reduce the impact of the potential evaluation overhead by avoiding unnecessary potential evaluations, for example for chains of degree-two vertices.
-% relate to td
-
-CATCHUp~\cite{swz-sfert-21} is a time-dependent adaptation of CCH, i.e.\ it introduces a time-dependent customization.
-The CATCHUp \emph{basic} customization yields for each edge in $uv \in E^+$ \emph{time-dependent} bound functions $\underline{b^+}$ and $\overline{b^+}$ for $\dist^<_w(u,v)$.
-From these functions, scalar bounds $b^+_{\min}$ and $b^+_{\max}$ can be derived which are typically much tighter than bounds obtained by a time-independent customization on input function bounds, i.e.\ $w^+_{\min}$ and $w^+_{\max}$.
 
 \section{Time-Dependent A* Potentials}
 
@@ -396,12 +392,16 @@ We therefore apply Lazy RPHAST a second time on a global upper $\comb_{\max}^+$ 
 
 \subparagraph{Phase Details.}
 The first preprocessing step is the CCH preprocessing.
-Then, we run the CATACHUp customization on the predicted time-dependent travel times $p$.
-This yields time-dependent bound functions $\underline{b^+}$ and $\overline{b^+}$ from which we also can derive scalar bounds $b^+_{\min}$ and $b^+_{\max}$.
+For the second step, we need to obtain time-dependent travel times for the augmented graph $G^+$ based on the predicted traffic weights $p$.
+For this, we use CATCHUp~\cite{swz-sfert-21}, which is a time-dependent adaptation of CCH.
+% TCH also possible
+The CATCHUp customization yields for each edge in $uv \in E^+$ approximated \emph{time-dependent} lower bound functions $\underline{b^+}$.
 We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
-$\pcfn(uv, \tau) := \min_{\lfloor \frac{\tau}{x} \rfloor x \leq \tau' < (\lfloor \frac{\tau}{x} \rfloor + 1) x} \underline{b^+}(uv, \tau')$
-where $x$ is the length of each constant segment, i.e.\ in our case 15 minutes.
+$\pcfn(uv, \tau) := \min_{\lfloor \frac{\tau}{\bucketlen} \rfloor \bucketlen \leq \tau' < (\lfloor \frac{\tau}{\bucketlen} \rfloor + 1) \bucketlen} \underline{b^+}(uv, \tau')$
+where $\bucketlen$ is the length of each constant segment, i.e.\ in our case 15 minutes.
 This enables a compact representation because functions can be represented with a fixed number of values per edge.
+We additionally derive a scalar lower bound $b^+_{\min}$.
+Note that $b^+_{\min}$ is typically much tighter than bounds obtained by a time-independent customization on input function bounds, i.e.\ $w^+_{\min}$.
 
 For the update phase we extract an upper bound weight function $\comb_{\max}$ for the entire day valid with respect to both the predicted and the live traffic.
 Then we run the CCH customization algorithm to obtain $\comb^+_{\max}$.
@@ -612,7 +612,7 @@ This happens because of blocked streets in the live traffic data.
 When the target vertex of a query is only reachable through a blocked road segment, A* will traverse large parts of the networks until the blocked road opens up.
 This affects all three potentials in the same way.
 
-\begin{figure}[tbh]
+\begin{figure}
 \centering
 \includegraphics[width=\linewidth]{fig/compression.pdf}
 \caption{
@@ -847,6 +847,8 @@ Therefore, it is sufficient to guarantee the strong FIFO property at vertex $v$ 
 For the lower bound property it even suffices to guarantee it only at exactly $\tau = \dist(s,v,\tdep)$.
 
 \section{Optimizations}\label{sec:appendix:optimizations}
+
+which we denote by $\dist^<(u,v)$
 
 It has three steps.
 In the first \emph{basic customization} step, each edge $uv \in E^+$ is processed such that $w^+(uv) = \dist^<(u,v)$.
