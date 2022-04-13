@@ -182,11 +182,11 @@ However the reported query times are a above 100\,ms which we consider too slow 
 \subsection{Contribution}
 
 In this work, we introduce a time-dependent generalization of A* potentials.
-We propose two simple and efficient realizations of time-dependent A* potentials and discuss how to apply them to answer queries in a combined live and predicted traffic setting.
+We present two extensions of Lazy RPHAST which realize a time-dependent potential function and discuss how to apply them to queries in a combined live and predicted traffic setting.
 An extensive evaluation confirms the applicability of our algorithms.
 Queries incorporating both predicted and the current traffic can be answered within few tenths of milliseconds.
 Live traffic updates can be integrated within a fraction of a minute.
-Compared to Dijkstra's algorithm, we achieve a speed-up of around two orders of magnitude and compared to the time-independent CH-Potential, we achieve a speed-up of up to an order of magnitude.
+Our time-dependent potentials are up to an order of magnitude faster than the classical Lazy RPHAST-based CH-Potentials and about two orders of magnitude faster than Dijkstra's algorithm.
 % Introduce A* with TDPot
 % Introduce 2 TDPots
 % Show how to apply them to live traffic
@@ -347,7 +347,7 @@ The CATCHUp \emph{basic} customization yields for each edge in $uv \in E^+$ \emp
 From these functions, scalar bounds $b^+_{\min}$ and $b^+_{\max}$ can be derived which are typically much tighter than bounds obtained by a time-independent customization on input function bounds, i.e.\ $w^+_{\min}$ and $w^+_{\max}$.
 CATCHUp does not support a time-dependent \emph{perfect} customization.
 However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization on $b^+_{\max}$ which yields $b^*_{\max}$.
-Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed~\cite{swz-sfert-21}.
+Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed.
 
 % We will also utilize this insight for our time-dependent potentials.
 
@@ -410,32 +410,34 @@ Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances by
 
 The \emph{Interval-Minimum Potential} is a time-dependent adaptation of the Lazy RPHAST algorithm.
 Where Lazy RPHAST has a single scalar (lower bound) weight for each edge, the Interval-Minimum Potential has a lower bound function.
-This allows for tighter lower bound estimates but introduces new challenges.
-First, computing an augmented CH graph with time-dependent travel time functions (even with only approximated lower bound functions) is a difficult problem on its own an has been subject to study for entire articles~\cite{bgsv-mtdtt-13,swz-sfert-21}.
-We therefore utilize the existing CATCHUp algorithm~\cite{swz-sfert-21}.
-Second, storing the travel time functions of an augmented graph can be very expensive in terms of memory consumption.
-Also, the usual representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
-We therefore resort to a different representation and store functions as piecewise constant values in buckets of equal time.
+This allows for tighter estimates but introduces new challenges.
+First, we need an augmented graph with sufficiently accurate time-dependent lower bounds.
+We utilize the existing CATCHUp customization~\cite{swz-sfert-21} because it is also based on CCH.
+Second, storing the shortcut travel time functions $w^+$ can be very expensive in terms of memory consumption.
+Also, the representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
+We therefore resort to a different representation and store functions as piecewise constant values in buckets of equal duration.
 In our implementation, we split the day into 96 buckets of length 15 minutes.
-Third, evaluating the lower bound functions requires a time of evaluation.
-While we have a time for the vertex for which we compute the potential, Lazy RPHAST also needs a time for every recursive invocation.
-We therefore apply Lazy RPHAST a second time on a global upper and lower bound weight function to obtain an arrival interval at each vertex.
+Third, evaluating these functions requires a time of evaluation.
+While $\pi_t(v, \tau)$ includes the time argument $\tau$ for the time at $v$, Lazy RPHAST also needs a time for every recursive invocation.
+We therefore apply Lazy RPHAST a second time on a global upper $\comb_{\max}^+$ and lower bound weight function $\pred_{\min}^+$ to obtain arrival intervals for arbitrary vertices.
 
 \subparagraph{Preprocessing}
 % TODO remove unpacking foo
-The first step is the same as for the Multi-Metric Potential: performing the CCH preprocessing.
-Then, we perform a CATACHUp customization.
-This yields tight scalar upper and lower bounds as well as time-dependent unpacking information which allows to reconstruct the path represented by a shortcut for each point in time.
-The original CATCHUp customization algorithm does not output shortcut travel time functions.
-However, approximated functions are maintained throughout the customization.
-From these approximated functions, we extract the piecewise constant lower bound buckets for all edges in the augmented graph.
+As before, the first step is to perform the CCH preprocessing.
+Then, we run the CATACHUp customization on the predicted time-dependent travel times $p$.
+This yields time-dependent bound functions $\underline{b^+}$ and $\overline{b^+}$ from which we also can derive scalar bounds $b^+_{\min}$ and $b^+_{\max}$.
+We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
+$\underline{b'^+}(uv, \tau) := \min_{\lfloor \frac{\tau}{x} \rfloor x \leq \tau' < (\lfloor \frac{\tau}{x} \rfloor + 1) x} \underline{b^+}(uv, \tau')$
+where $x$ is the length of each constant segment, i.e.\ in our case 15 minutes.
+This allows us to represent the time-dependent lower bound of each edge in $E^+$ with a fixed number of travel time values.
 
 \subparagraph{Update}
-We extract an upper bound weight function for the entire day valid with respect to both the predicted and the live traffic.
-Then both the basic and the perfect customization algorithms are applied to the upper bound without constructing a reduced augmented graph.
-Now, we remove all CCH edges, where the upper bound undercuts the scalar lower bound from the CATCHUp customization and prepare two graphs:
-One with the bucket-based time-dependent lower bound functions and another one with the scalar upper and lower bounds.
-The running time of this phase is again dominated by the construction of the reduced graphs and the adjustments discussed previously are applicable, too.
+We extract an upper bound weight function $\comb_{\max}$ for the entire day valid with respect to both the predicted and the live traffic.
+Then both the basic and the perfect customization algorithms are used to obtain $\comb^*_{\max}$ without constructing a reduced augmented graph.
+Now, we remove all CCH edges, where the upper bound $\comb^*_{\max}$ undercuts the scalar lower bound from the CATCHUp customization $b^+_{\min}$ and prepare the reduced graph $G^*$.
+We use its topology for the bucket-based time-dependent lower bound functions $\underline{b'^+}$ and the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$.
+The construction of $G^+$ dominates the running time of this phase.
+However, since this is optional, one can again accelerate the update phase at the cost of some query performance.
 
 % derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
 % reduced graph bounds
@@ -444,12 +446,13 @@ The running time of this phase is again dominated by the construction of the red
 
 \subparagraph{Query}
 We build the potential with two instantiations of the Lazy RPHAST algorithm.
-The first one works on the graph with the scalar bounds and computes lower and upper bounds on the distance from the source vertex.
-The second one works on the graph with the bucket-based time-dependent lower bound functions.
-The second one uses the first one to determine arrival intervals at each vertex which are in turn used to evaluate outgoing edges.
+The first one is executed on $G^*$ with the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$.
+However, for this instance, we switch the directions and thus compute lower and upper bounds on the distance from the source vertex.
+The second one computes lower bound distances to the target using the $\underline{b'^+}$ weight function.
+To determine evaluation times, the first Lazy RPHAST is used to quickly obtain arrival intervals at arbitrary vertices.
 
 Choosing the right memory layout for the bucket weights is crucial for the performance of this algorithm.
-We do store all weights of each bucket consecutively.
+We do store all edge weights of each bucket consecutively.
 Typically, only few buckets per edge are relevant, because the arrival intervals are relatively tight.
 Also, all outgoing edges of each vertex are evaluated consecutively.
 Thus, having their weights for the same bucket close to each other increases cache hits.
@@ -467,17 +470,17 @@ This directly follows from the correctness of the CATCHUp preprocessing and the 
 
 Both our time-dependent potentials have to store a significant number of weight functions.
 This can lead to problematic memory consumption.
-However, since we only need lower bounds, we can merge lower bound weight functions into a combined weight function with the respective minimum weights and thus reduce the number of weight functions we need to store.
+However, since we only need lower bounds, we can merge lower bound weight functions into a combined weight function with the respective minimum weights.
 Thus, by trading some tightness, we can reduce memory consumption.
-Dealing with merged lower bound functions can be implemented for both potentials with a layer of indirection which maps each bucket or interval to a weight function id.
-Then, when merging to weight functions, we let both buckets/intervals point to the same weight function id.
+Both potentials can handle merged lower bound functions with a layer of indirection which maps each bucket or interval to a weight function id.
+When merging to weight functions, we let both buckets/intervals point to the same weight function id.
 
 We now discuss an efficient and well parallelizable algorithm to iteratively merge weight functions until only $k$ functions remain.
 In each step, we merge the pair of weight functions with the minimal sum of squared differences over all edge weights.
-Since comparing all weight function pairs is expensive, we track the minimum difference sum we have found so far and stop any comparison where the sum exceeds the best sum.
-Even when stopping a comparison, we store the sum so far and the edge id up to which we have summed up the differences.
-This allows to avoid repeating the work already performed should we need to continue to compare this particular pair of weight functions.
-Finally, we maintain all pairs of weights along with the (possibly partial) difference sums in a priority queue ordered by the difference sums.
+Since comparing all pairs of weight functions is expensive, we track the minimum difference sum $\delta_{\min}$ we have found so far and stop any comparison where the sum exceeds $\delta_{\min}$.
+However, even when stopping a comparison, we store the preliminary sum and the edge id up to which we have summed up the differences.
+Then, we do not need to start from scratch should we need to continue to compare this particular pair of weight functions.
+Finally, we maintain all pairs of weights along with the (possibly preliminary) difference sums in a priority queue ordered by the difference sums.
 When merging two weight functions, all other associated queue entries are removed from the queue and new entries for comparisons between the new weight function and all other functions are inserted.
 To determine the next weight function pair to merge, unfinished weight function pairs are popped from the queue and processed in parallel.
 The minimum difference is tracked in an atomic variable.
