@@ -81,6 +81,10 @@
 
 \newcommand*{\gchu}{G^{\uparrow}}
 \newcommand*{\gchd}{\overleftarrow{G^{\downarrow}}}
+\newcommand*{\echu}{E^{\uparrow}}
+\newcommand*{\echd}{\overleftarrow{E^{\downarrow}}}
+
+\newcommand*{\pcfn}{\underline{b'^+}}
 
 \usepackage[algo2e,vlined]{algorithm2e}
 \usepackage{booktabs}
@@ -182,7 +186,7 @@ However the reported query times are a above 100\,ms which we consider too slow 
 \subsection{Contribution}
 
 In this work, we introduce a time-dependent generalization of A* potentials.
-We present two extensions of Lazy RPHAST which realize a time-dependent potential function and discuss how to apply them to queries in a combined live and predicted traffic setting.
+We present two simple extensions of Lazy RPHAST which realize a time-dependent potential function and discuss how to apply them to queries in a combined live and predicted traffic setting.
 An extensive evaluation confirms the applicability of our algorithms.
 Queries incorporating both predicted and the current traffic can be answered within few tenths of milliseconds.
 Live traffic updates can be integrated within a fraction of a minute.
@@ -195,12 +199,13 @@ Our time-dependent potentials are up to an order of magnitude faster than the cl
 % 2 orders of magnitude over dijkstra
 
 \section{Preliminaries}
-We consider directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
+We consider simple directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
 We use $uv$ as a short notation for an edge from a \emph{tail} vertex $u$ to \emph{head} vertex $v$.
 Weight functions $w : E \to (\mathbb{Z} \to \mathbb{Z}^{\geq 0})$ map edges to time-dependent functions which in turn map a departure $\tau$ at the tail $u$ to a travel time $w(uv)(\tau)$.
 % The arrival at the head $v$ is thus $w(uv)(\tau) + \tau$.
 To simplify notation we will often write $w(uv, \tau)$.
 When it is clear from context that we talk about constant functions, we omit the time argument and write $w(uv)$.
+The reversed graph $\overleftarrow{G} = (V, \overleftarrow{E})$ contains reversed edges $vu$ for every edge $uv \in E$ and $\overleftarrow{w}(vu) = w(uv)$ is the corresponding (time-independent) reversed weight function.
 % We extend the weight function definition to paths:
 The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating the edges travel times: $w(P, \tau) = w(v_1 v_2, \tau) + w((v_2,\dots,v_k), \tau + w(v_1 v_2, \tau))$.
 We denote the travel time of the shortest path between vertices $s$ and $t$ as $\dist_w(s,t,\tdep)$.
@@ -226,9 +231,7 @@ $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{e
 The update phase will be repeated frequently (every few minutes) and should therefore be as fast as possible.
 % We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
 During the final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible by obtaining the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
-% TODO talk about -1 segment
-% TODO visualize
-% TODO inf
+We discuss this traffic model further in Appendix~\ref{sec:appendix:model}.
 
 \subsection{Fundamental Algorithms}
 
@@ -265,7 +268,7 @@ There are three important properties of time-dependent potentials to consider wh
   It must always hold or worse distances might have better queue keys.
   % This property has no time-independent equivalent because it trivially holds in this case.
 \end{itemize}
-In Appendix~\ref{sec:correctness} we derive and discuss these correctness properties in detail and formally prove that queries will be answered correctly with these properties.
+In Appendix~\ref{sec:appendix:correctness} we derive and discuss these correctness properties in detail and formally prove that queries will be answered correctly with these properties.
 Note that these properties only need to hold for certain times $\tau$.
 Our proposed potentials heavily rely on this and only compute data for the specific times necessary to answer a query correctly.
 
@@ -277,32 +280,31 @@ Our proposed potentials heavily rely on this and only compute data for the speci
 During the preprocessing, a total order $v_1 < \dots < v_n$ among all vertices $v_i \in V$ by ``importance'' is determined heuristically, where more important vertices should lie on more shortest paths.
 Intuitively, vertices on highways are more important than vertices on rural streets.
 Then, an \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} and weights $w^+$ is constructed.
-Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i < u, x_i < v$.
+Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i < u \land x_i < v$.
 Therefore, $w^+(uv)$ gets the length of the shortest such path which we denote by $\dist^<(u,v)$.
-The resulting augmented graph has the property that between any two vertices $s$ and $t$ there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \geq \min(s, t) \forall v \in P$.
-Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ and $t$ on $G^+$ while following only edges towards more important vertices.
+We sometime refer to $G^+$ split into an upward graph $\gchu = (V, \echu)$ which contains only edges $uv$ where $v > u$ and a downward graph $G^{\downarrow} = (V, E^{\downarrow})$ vice versa.
+The augmented graph has the property that between any two vertices $s$ and $t$ there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \geq \min(s, t) \forall v \in P$.
+Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
 Because only few vertices are reachable in this \emph{CH search space}, queries are very fast.
 
-% The shortcuts in $G^+$ are inserted in such a way that
-
-% We split $G^+$ into $\gchu$ and $G^{\downarrow}$ where $\gchu$ only contains arcs $uv$ where $u < v$ and $G^{\downarrow}$ vice versa.
-% For this, the weights $w^+(uv)$ must have the length of the shortest path the shortcut ``skips over'', i.e.\ $w^+(uv) = \dist_{[R(u,v)]}(u,v)$.
-
-% For this, edges $uv \in E^+$ graph get the weight of the shortest path between their endpoints which uses only vertices of lower rank.
-% We denote this \emph{lower rank distance} by $\dist^<_w(u,v)$.
-% shortcut weight notation
+In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
+For CCH, the construction of the augmented graph is split in two phases.
+In the first phase, the topology of the augmented graph is constructed without considering any weight functions.
+It therefore is valid for \emph{all} weight functions.
+In the second phase, the \emph{customization}, the weights $w^+$ of the augmented graph are computed for a given weight function $w$.
+The customization can be parallelized efficiently~\cite{bsw-rttau-19}.
 
 % \subsection{Lazy RPHAST and CH-Potentials}
 
 \begin{algorithm2e}
-\KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on the reversed $G^+$ following only edges towards more important vertices}
+\KwData{$\mathtt{D}^{\downarrow}[u]$: tentative distance from $u$ to $t$ computed by Dijkstra's algorithm on $\gchd$}
 \KwData{$\mathtt{D}[u]$: memoized final distance from $u$ to $t$, initially $\bot$}
 \SetKwFunction{Dist}{ComputeAndMemoizeDist}
 \SetKwProg{Fn}{Function}{:}{}
 \Fn{\Dist{$u$}}{
     \If{$\mathtt{D}[u] = \bot$}{
         $\mathtt{D}[u]\leftarrow \mathtt{D}^{\downarrow}[u]$\;
-        \For{all edges $uv \in E^+$ where $u < v$}{
+        \For{all edges $uv \in \echu$}{
             $d \leftarrow \Dist(v)$\;
             \If{$d + w^+(uv) < \mathtt{D}[u]$}{
                 $\mathtt{D}[u] \leftarrow d + w^+(uv)$\;
@@ -315,47 +317,33 @@ Because only few vertices are reachable in this \emph{CH search space}, queries 
 \label{algo:lazy_rphast}
 \end{algorithm2e}
 
-\emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a CH query variant to incrementally compute distances from many sources toward a common target.
-The first step is a run Dijkstra's algorithm on the reversed augmented graph while following only edges towards more important vertices from $t$ similarly to a regular CH query.
-The other Dijkstra search is replaced with a recursive depth-first search (DFS) which memoizes distances.
+\emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a (C)CH query variant to incrementally compute distances from many sources toward a common target.
+The first step is a run Dijkstra's algorithm on $\gchd$ from $t$, similarly to a regular CH query.
+The second Dijkstra search is replaced with a recursive depth-first search (DFS) which memoizes distances.
 Algorithm~\ref{algo:lazy_rphast} depicts this routine which will be called for all sources.
 If the distance of a vertex $u$ was previously computed, the routine terminates immediately and returns the memoized value $\mathtt{D}[u]$.
 Otherwise, the distance for all upward neighbors $v$ is obtained recursively.
 The final distance is the minimum over the paths distances $w^+(uv) + \mathtt{D}[v]$ through the upward neighbors and the distance possibly found in the backward search $\mathtt{D}^{\downarrow}[u]$.
-% Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
-Using Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
-% Lazy RPHAST can be applied to CCH without modifications.
-% low deg optimizations
+Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
+Using Lazy RPHAST as an A* potential is called \emph{(C)CH-Potentials}.
+The authors of~\cite{strasser_et_al:LIPIcs.SEA.2021.6} describe additional optimizations for A* which we also utilize.
+The goal is to reduce the impact of the potential evaluation overhead by avoiding unnecessary potential evaluations, for example for chains of degree-two vertices.
 % relate to td
-
-In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
-For CCH, the construction of the augmented graph is split in two phases.
-In the first phase, the topology of the augmented graph is constructed without considering any weight functions.
-It therefore is valid for \emph{all} weight functions.
-In the second phase, the \emph{customization}, the weights $w^+$ of the augmented graph are computed for a given weight function $w$.
-It has three steps.
-In the first \emph{basic customization} step, each edge $uv \in E^+$ is processed such that $w^+(uv) = \dist^<(u,v)$.
-This is already sufficient to apply the CH query algorithm and compute correct distances.
-However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
-In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
-The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
-Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} $G^*=(V, E^*)$ is constructed.
-All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
 
 CATCHUp~\cite{swz-sfert-21} is a time-dependent adaptation of CCH, i.e.\ it introduces a time-dependent customization.
 The CATCHUp \emph{basic} customization yields for each edge in $uv \in E^+$ \emph{time-dependent} bound functions $\underline{b^+}$ and $\overline{b^+}$ for $\dist^<_w(u,v)$.
 From these functions, scalar bounds $b^+_{\min}$ and $b^+_{\max}$ can be derived which are typically much tighter than bounds obtained by a time-independent customization on input function bounds, i.e.\ $w^+_{\min}$ and $w^+_{\max}$.
-CATCHUp does not support a time-dependent \emph{perfect} customization.
-However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization on $b^+_{\max}$ which yields $b^*_{\max}$.
-Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed.
-
-% We will also utilize this insight for our time-dependent potentials.
 
 \section{Time-Dependent A* Potentials}
 
+In this section, we propose two time-dependent A* Potentials which are both extensions of Lazy RPHAST.
+Lazy RPHAST/CH-Potentials is already quite an efficient potential and obtains exact distances with respect to scalar lower bound weights, i.e.\ the tightest possible estimates with a time-independent potential definition.
+To outperform CH-Potentials, we must not only obtain significantly tighter estimates but also be careful to not make the potential evaluation too expensive.
+Therefore, we avoid costly operations on functions and work with scalar values as much as possible.
+Also, even though our potentials are time-dependent, computed estimates during an individual query will typically \emph{not} change depending on the visit time.
+
 \subsection{Multi-Metric Potential}
 
-We now introduce our first time-dependent potential, the \emph{Multi-Metric Potential}.
 Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival at the target.
 Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l_{[\tau', \tau'']}(e) = \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
 Clearly, $\dist_{l_{[\tau', \tau'']}}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
@@ -384,21 +372,12 @@ Further, we extract an upper bound weight function $\comb_{\max}$ valid for the 
 The query starts with a classical CCH query on the customized upper bound $\comb^+_{\max}$ to obtain a pessimistic estimate of $\tmax$.
 We then select the shortest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
 Running Lazy RPHAST on $G^*_l$ with the customized weight function $l_{[\tau_i', \tau_i'']}^+$ of this interval yields the desired potential function.
+See Appendix~\ref{sec:appendix:optimizations} for some additional optimizations.
 
 \subparagraph{Correctness.}
 For any given single query, the multi metric potential actually is a time-independent potential which returns exact shortest distance with respect to a valid lower bound weight function.
 Constant potentials trivially adhere to the strong FIFO property.
 Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances by a lower bound weight function are feasible.
-
-\subparagraph{Optimizations.}
-During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
-This allows us to remove unnecessary edges and accelerate the query phase.
-We remove edges $uv$ where $\dist^<_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
-We could remove even more edges if we were to check the condition for every lower bound weight function individually.
-However, in this case we could not reuse the same reduced augmented graph topology for all weight functions.
-As this would roughly double memory consumption we only remove edges which can be removed for all weight functions.
-We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
-% % metric switching?
 
 \subsection{Interval-Minimum Potential}
 
@@ -420,40 +399,40 @@ The first preprocessing step is the CCH preprocessing.
 Then, we run the CATACHUp customization on the predicted time-dependent travel times $p$.
 This yields time-dependent bound functions $\underline{b^+}$ and $\overline{b^+}$ from which we also can derive scalar bounds $b^+_{\min}$ and $b^+_{\max}$.
 We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
-$\underline{b'^+}(uv, \tau) := \min_{\lfloor \frac{\tau}{x} \rfloor x \leq \tau' < (\lfloor \frac{\tau}{x} \rfloor + 1) x} \underline{b^+}(uv, \tau')$
+$\pcfn(uv, \tau) := \min_{\lfloor \frac{\tau}{x} \rfloor x \leq \tau' < (\lfloor \frac{\tau}{x} \rfloor + 1) x} \underline{b^+}(uv, \tau')$
 where $x$ is the length of each constant segment, i.e.\ in our case 15 minutes.
 This enables a compact representation because functions can be represented with a fixed number of values per edge.
 
 For the update phase we extract an upper bound weight function $\comb_{\max}$ for the entire day valid with respect to both the predicted and the live traffic.
 Then we run the CCH customization algorithm to obtain $\comb^+_{\max}$.
 
+% make sure its clear that the lazy rphast remains time-independent
 The query consists of two instantiations of the Lazy RPHAST algorithm.
-The first one is executed with the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$.
-However, for this instance, we switch the directions and thus compute lower and upper bounds on the distance from the source vertex.
-The second one computes lower bound distances to the target using the $\underline{b'^+}$ weight function.
-To determine evaluation times, the first Lazy RPHAST is used to quickly obtain arrival intervals at arbitrary vertices.
+The first one uses the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$ and computes arrival intervals at arbitrary vertices.
+Since arrival intervals are distances from the source vertex, we have to Lazy RPHAST in reverse direction, i.e.\ first, we run Dijkstra's algorithm from $s$ on $\gchu$ and then, we apply the recursive distance-memoizing DFS on $\gchd$ for any vertex for which we want to obtain an arrival interval.
+With these arrival intervals, we can now compute lower bounds to the target with the second Lazy RPHAST instantiation, which uses the time-dependent lower bounds $\pcfn$.
+The first step is to run Dijkstra's algorithm from $t$ on $\gchd$.
+To relax an edge $uv \in \echd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using Lazy RPHAST on the bounds.
+This allows us to determine a tight lower bound for $vu$ the relevant time and we can then check if we can improve the lower bound from $v$ to $t$, i.e.\
+$\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(vu, \tau))$.
+Having established preliminary backward distances for all vertices in the CH search space of $t$, we can now compute estimates with the recursive distance-memoizing DFS.
+To obtain a distance estimate for vertex $u$, we first recursively compute distance estimates $\mathtt{D}^{\downarrow}[v]$ for all upward neighbors $v$ where $uv \in \echu$.
+Then, we use Lazy RPHAST on the bounds to obtain an arrival interval at $[\tau_{\min}, \tau_{\max}]$ at $u$.
+Finally, we relax the upward edges $uv$ set $\mathtt{D}^{\downarrow}[u] \leftarrow \min(\mathtt{D}^{\downarrow}[u], \mathtt{D}^{\downarrow}[v] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(uv, \tau))$.
+This yields the final estimate for $u$.
 
-Choosing the right memory layout for the bucket weights is crucial for the performance of this algorithm.
+Choosing the right memory layout for the bucket weights is crucial for the performance.
 We do store all edge weights of each bucket consecutively.
 Typically, only few buckets per edge are relevant, because the arrival intervals are relatively tight.
 Also, all outgoing edges of each vertex are evaluated consecutively.
 Thus, having their weights for the same bucket close to each other increases cache hits.
+See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 
 \subparagraph{Correctness.}
 The Interval-Minimum Potential is not feasible because we use piecewise constant functions for the the shortcut travel time lower bounds.
 Still, it does satisfy the strong FIFO property because for any given single query, the estimates are constant.
 Moreover, the estimates are lower bounds on the distances.
 This directly follows from the correctness of the CATCHUp preprocessing and the Lazy RPHAST algorithm.
-
-\subparagraph{Optimizations.}
-Similarly to the Multi-Metric Potential, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph which accelerates queries.
-Again we use the perfect customization to obtain $\comb^*_{\max}$ and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.
-
-% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
-% reduced graph bounds
-% reduced graph buckets by predicted bounds
-% bound switching
-% evaluation time metric pruning
 
 \subsection{Compression}\label{sec:compression}
 
@@ -608,7 +587,7 @@ For short-range queries, the other potentials are actually faster during the nig
 Moreover, the MMP is roughly as fast as the IMP for 1h queries during the daytime.
 Therefore, MMP may actually be a very simple and practical approach for many practical applications where short-range queries are much more prominent.
 
-\begin{figure}[tbh]
+\begin{figure}
 \centering
 \includegraphics[width=\linewidth]{fig/ranks.pdf}
 \caption{
@@ -652,7 +631,8 @@ The IMP, which achieves much greater speed-ups is less robust against compressio
 Nevertheless, we can reduce the memory consumption by a factor of about three (to 32 functions) and still achieve very decent query running times.
 With 32 functions, the absolute memory consumption goes down to less than 20\,GB which is at least manageable.
 % on long range queries still when reduced to 4 faster than MMP
-% TODO compression running time and parallelization
+The running time of the compression algorithm is generally relatively short compared to the rest of the preprocessing because of the efficient parallelization.
+See Appendix~\ref{sec:appendix:parallelization} for further details.
 
 \section{Conclusion}
 
@@ -805,7 +785,13 @@ To the best of our knowledge, this makes our approach the first to achieve almos
 
 \appendix
 
-\section{Correctness Properties of Time-Dependent A* Potentials}\label{sec:correctness}
+\section{Further Discussion of Traffic Model}\label{sec:appendix:model}
+
+% TODO talk about -1 segment
+% TODO visualize
+% TODO inf
+
+\section{Correctness Properties of Time-Dependent A* Potentials}\label{sec:appendix:correctness}
 
 In this section, we analyze correctness properties for time-dependent A* potentials.
 For the analysis, it is oftentimes more practical the use arrival time functions instead of travel time functions.
@@ -859,6 +845,42 @@ Assume we are running A* to answer a query from $s$ to $t$ with departure $\tdep
 Clearly, A* will never invoke the potential of vertex $v$ with $\tau < \dist(s,v,\tdep)$.
 Therefore, it is sufficient to guarantee the strong FIFO property at vertex $v$ and the feasibility property for edge $vw$ for $\tau \geq \dist(s,v,\tdep)$.
 For the lower bound property it even suffices to guarantee it only at exactly $\tau = \dist(s,v,\tdep)$.
+
+\section{Optimizations}\label{sec:appendix:optimizations}
+
+It has three steps.
+In the first \emph{basic customization} step, each edge $uv \in E^+$ is processed such that $w^+(uv) = \dist^<(u,v)$.
+This is already sufficient to apply the CH query algorithm and compute correct distances.
+However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
+In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
+The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
+Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} $G^*=(V, E^*)$ is constructed.
+All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
+
+CATCHUp does not support a time-dependent \emph{perfect} customization.
+However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization on $b^+_{\max}$ which yields $b^*_{\max}$.
+Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed.
+% We will also utilize this insight for our time-dependent potentials.
+
+\subparagraph{Multi-Metric-Potential.}
+During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
+This allows us to remove unnecessary edges and accelerate the query phase.
+We remove edges $uv$ where $\dist^<_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
+We could remove even more edges if we were to check the condition for every lower bound weight function individually.
+However, in this case we could not reuse the same reduced augmented graph topology for all weight functions.
+As this would roughly double memory consumption we only remove edges which can be removed for all weight functions.
+We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
+% % metric switching?
+
+\subparagraph{Interval-Minimum-Potential.}
+Similarly to the Multi-Metric Potential, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph which accelerates queries.
+Again we use the perfect customization to obtain $\comb^*_{\max}$ and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
+% reduced graph bounds
+% reduced graph buckets by predicted bounds
+% bound switching
+% evaluation time metric pruning
+
+\section{Parallelization of Compression}\label{sec:appendix:parallelization}
 
 % \section{Styles of lists, enumerations, and descriptions}\label{sec:itemStyles}
 
