@@ -168,7 +168,7 @@ While it has a customization phase, running it takes significantly longer than a
 On the benchmark graphs used in this paper, a CATCHUp customization may even take hours, which is too slow for a live traffic updates setting.
 % TDS?, (Shark?)
 
-A* has also been utilized in speed-up techniques for routing in road networks.
+A*~\cite{hnr-afbhd-68} has also been utilized in speed-up techniques for routing in road networks.
 With ALT~\cite{gh-cspas-05,gw-cppsp-05}, a few landmark vertices are selected during preprocessing.
 From and to these vertices, distances to all other vertices are precomputed.
 During queries, these distances are combined with the triangle inequality to obtain distance estimates to the target vertex.
@@ -237,7 +237,7 @@ We discuss this traffic model further in Appendix~\ref{sec:appendix:model}.
 \subsection{Fundamental Algorithms}
 
 % distance vs arrival times
-\emph{Dijkstra's algorithm} computes $\dist_w(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
+\emph{Dijkstra's algorithm}~\cite{d-ntpcg-59} computes $\dist_w(s,t,\tdep)$ by exploring vertices ordered by increasing distance from $s$ until $t$ is reached.
 The distances from $s$ of each vertex $u$ are tracked in an array $\mathtt{D}[u]$, initially set to $\infty$ for all vertices.
 A priority queue with vertices ordered by their distance from $s$ is maintained.
 The priority queue is initialized with $s$ and $\mathtt{D}[u]$ set to $\tdep$.
@@ -248,7 +248,7 @@ Once $t$ was settled, the final distance is known and the search can terminate.
 We denote the vertices visited during a query as \emph{search space}.
 
 % heurisitc vs potential
-A* is an extension of Dijkstra's algorithm where the search is guided towards the target through a potential function $\pi_t$ which maps vertices to an estimate of the remaining distance.
+A*~\cite{hnr-afbhd-68} is an extension of Dijkstra's algorithm where the search is guided towards the target through a potential function $\pi_t$ which maps vertices to an estimate of the remaining distance.
 This estimate is added to the queue key.
 Thus, vertices closer to the target a visited earlier and the search space becomes smaller.
 %
@@ -278,22 +278,22 @@ Our proposed potentials heavily rely on this and only compute data for the speci
 \emph{Contraction Hierarchies} (CH)~\cite{gssv-erlrn-12} is a speed-up technique to accelerate shortest path computations on time-independent road networks through precomputation.
 % For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
 % Here, we briefly introduce necessary notation and concepts used in this paper.
-During the preprocessing, a total order $v_1 < \dots < v_n$ among all vertices $v_i \in V$ by ``importance'' is determined heuristically, where more important vertices should lie on more shortest paths.
+During the preprocessing, a total order $v_1 \prec \dots \prec v_n$ among all vertices $v_i \in V$ by ``importance'' is determined heuristically, where more important vertices should lie on more shortest paths.
 Intuitively, vertices on highways are more important than vertices on rural streets.
 Then, an \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} and weights $w^+$ is constructed.
-Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i < u \land x_i < v$.
+Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i \prec u \land x_i \prec v$.
 Therefore, $w^+(uv)$ gets the length of the shortest such path.
-We sometime refer to $G^+$ split into an upward graph $\gchu = (V, \echu)$ which contains only edges $uv$ where $v > u$ and a downward graph $G^{\downarrow} = (V, E^{\downarrow})$ vice versa.
-The augmented graph has the property that between any two vertices $s$ and $t$ there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \geq \min(s, t) \forall v \in P$.
+We sometime refer to $G^+$ split into an upward graph $\gchu = (V, \echu)$ which contains only edges $uv$ where $v \succ u$ and a downward graph $G^{\downarrow} = (V, E^{\downarrow})$ vice versa.
+The augmented graph has the property that between any two vertices $s$ and $t$ there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \succeq \min(s, t) \forall v \in P$.
 Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
-Because only few vertices are reachable in this \emph{CH search space}, queries are very fast.
+Because only few vertices are reachable in this \emph{CH search space}, queries are very fast, i.e.\ about a tenth of a millisecond on continental sized networks.
 
 In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
 For CCH, the construction of the augmented graph is split in two phases.
 In the first phase, the topology of the augmented graph is constructed without considering any weight functions.
 It therefore is valid for \emph{all} weight functions.
-In the second phase, the \emph{customization}, the weights $w^+$ of the augmented graph are computed for a given weight function $w$.
-The customization can be parallelized efficiently~\cite{bsw-rttau-19}.
+In the second \emph{customization} phase, the weights $w^+$ of the augmented graph are computed for a given weight function $w$.
+The customization can be parallelized efficiently~\cite{bsw-rttau-19} and takes a couple of seconds on typical networks.
 
 % \subsection{Lazy RPHAST and CH-Potentials}
 
@@ -306,10 +306,7 @@ The customization can be parallelized efficiently~\cite{bsw-rttau-19}.
     \If{$\mathtt{D}[u] = \bot$}{
         $\mathtt{D}[u]\leftarrow \mathtt{D}^{\downarrow}[u]$\;
         \For{all edges $uv \in \echu$}{
-            $d \leftarrow \Dist(v)$\;
-            \If{$d + w^+(uv) < \mathtt{D}[u]$}{
-                $\mathtt{D}[u] \leftarrow d + w^+(uv)$\;
-            }
+            $\mathtt{D}[u] \leftarrow \min(\mathtt{D}[u], \Dist(v) + w^+(uv))$\;
         }
     }
     \Return{$\mathtt{D}[u]$}\;
@@ -332,7 +329,7 @@ The goal is to reduce the impact of the potential evaluation overhead by avoidin
 
 \section{Time-Dependent A* Potentials}
 
-In this section, we propose two time-dependent A* Potentials which are both extensions of Lazy RPHAST.
+In this section, we propose two time-dependent A* potentials which are both extensions of Lazy RPHAST.
 Lazy RPHAST/CH-Potentials is already quite an efficient potential and obtains exact distances with respect to scalar lower bound weights, i.e.\ the tightest possible estimates with a time-independent potential definition.
 To outperform CH-Potentials, we must not only obtain significantly tighter estimates but also be careful to not make the potential evaluation too expensive.
 Therefore, we avoid costly operations on functions and work with scalar values as much as possible.
