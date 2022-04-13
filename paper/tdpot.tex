@@ -365,7 +365,7 @@ Instead of using a single potential based on a global lower bound valid for the 
 At query time, we then select an appropriate weight function.
 Efficiently computing distances with respect to the selected weight function is done with the Lazy RPHAST.
 
-\subparagraph{Preprocessing}
+\subparagraph{Phase Details.}
 The very first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute an importance ordering and construct the unweighted augmented graph.
 Now let $I$ be a set of time intervals.
 In our implementation,
@@ -378,33 +378,27 @@ This can be trivially parallelized.
 Also, the customization can be parallelized internally.
 For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19,ghuw-fbndocch-19}.
 
-\subparagraph{Update}
-We compute an additional lower bound weight function for $[\tau^{\operatorname{now}}, \tau^{\operatorname{now}} + 59\,\operatorname{minutes}]$ which incorporates the current live traffic situation $\comb$.
-Further, we extract an upper bound weight function $\comb_{\max}$ valid for the entire day with respect to both the predicted and the live traffic.
-We then run both the basic and the perfect customization algorithms for the upper bound and obtain $\comb^*_{\max}$.
-Recall that after the perfect customization, each edge $uv \in E^+$ has the length of the shortest distance between its endpoints $\dist_{\comb_{\max}}(u,v)$.
-We now construct a reduced augmented graph $G^*_l$ for all lower bounds at once.
-This graph contains all edges $uv \in E^+$ for which the customized global lower bound weight is not greater than the customized upper bound, i.e.\ $l_{[0:00, 24:00]}^+(uv) \leq \comb^*_{\max}(uv)$.
-Edges where the upper bound now undercuts the global lower bound are removed in \emph{all} lower bound weights.
-% could do for each weight seperately but not worth it
-Finally, we construct the reduced graph $G^*_{\comb_{\max}}$ for the upper bound by removing all edges $uv$ where $\comb^*_{\max}(uv) < \comb^+_{\max}(uv)$.
-The running time of this phase is dominated by the construction of the reduced graphs.
-Parallelizing it is crucial to achieve good running times.
-See~\cite{bsw-rttau-19} for engineering details.
-Note that the graph reduction steps are optional and only serve to optimize query performance.
-In case update running times are critical, the graph reduction can be skipped which will slightly worsen the query performance.
+During the update phase, we compute an additional lower bound weight function for $[\tau^{\operatorname{now}}, \tau^{\operatorname{now}} + 59\,\operatorname{minutes}]$ which incorporates the current live traffic situation $\comb$ and run the basic customization for it.
+Further, we extract an upper bound weight function $\comb_{\max}$ valid for the entire day with respect to both the predicted and the live traffic and perform the CCH basic customization to obtain $\comb^+_{\max}$.
 
-\subparagraph{Query}
-We perform a classical CCH query on the customized upper bound to obtain a pessimistic estimate of $\tmax$.
+The query starts with a classical CCH query on the customized upper bound $\comb^+_{\max}$ to obtain a pessimistic estimate of $\tmax$.
 We then select the shortest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
 Running Lazy RPHAST on $G^*_l$ with the customized weight function $l_{[\tau_i', \tau_i'']}^+$ of this interval yields the desired potential function.
-% Metric switching
 
-\subparagraph{Correctness}
+\subparagraph{Correctness.}
 For any given single query, the multi metric potential actually is a time-independent potential which returns exact shortest distance with respect to a valid lower bound weight function.
 Constant potentials trivially adhere to the strong FIFO property.
 Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances by a lower bound weight function are feasible.
-% metric switching?
+
+\subparagraph{Optimizations.}
+During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
+This allows us to remove unnecessary edges and accelerate the query phase.
+We remove edges $uv$ where $\dist^<_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
+We could remove even more edges if we were to check the condition for every lower bound weight function individually.
+However, in this case we could not reuse the same reduced augmented graph topology for all weight functions.
+As this would roughly double memory consumption we only remove edges which can be removed for all weight functions.
+We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
+% % metric switching?
 
 \subsection{Interval-Minimum Potential}
 
@@ -421,32 +415,20 @@ Third, evaluating these functions requires a time of evaluation.
 While $\pi_t(v, \tau)$ includes the time argument $\tau$ for the time at $v$, Lazy RPHAST also needs a time for every recursive invocation.
 We therefore apply Lazy RPHAST a second time on a global upper $\comb_{\max}^+$ and lower bound weight function $\pred_{\min}^+$ to obtain arrival intervals for arbitrary vertices.
 
-\subparagraph{Preprocessing}
-% TODO remove unpacking foo
-As before, the first step is to perform the CCH preprocessing.
+\subparagraph{Phase Details.}
+The first preprocessing step is the CCH preprocessing.
 Then, we run the CATACHUp customization on the predicted time-dependent travel times $p$.
 This yields time-dependent bound functions $\underline{b^+}$ and $\overline{b^+}$ from which we also can derive scalar bounds $b^+_{\min}$ and $b^+_{\max}$.
 We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
 $\underline{b'^+}(uv, \tau) := \min_{\lfloor \frac{\tau}{x} \rfloor x \leq \tau' < (\lfloor \frac{\tau}{x} \rfloor + 1) x} \underline{b^+}(uv, \tau')$
 where $x$ is the length of each constant segment, i.e.\ in our case 15 minutes.
-This allows us to represent the time-dependent lower bound of each edge in $E^+$ with a fixed number of travel time values.
+This enables a compact representation because functions can be represented with a fixed number of values per edge.
 
-\subparagraph{Update}
-We extract an upper bound weight function $\comb_{\max}$ for the entire day valid with respect to both the predicted and the live traffic.
-Then both the basic and the perfect customization algorithms are used to obtain $\comb^*_{\max}$ without constructing a reduced augmented graph.
-Now, we remove all CCH edges, where the upper bound $\comb^*_{\max}$ undercuts the scalar lower bound from the CATCHUp customization $b^+_{\min}$ and prepare the reduced graph $G^*$.
-We use its topology for the bucket-based time-dependent lower bound functions $\underline{b'^+}$ and the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$.
-The construction of $G^+$ dominates the running time of this phase.
-However, since this is optional, one can again accelerate the update phase at the cost of some query performance.
+For the update phase we extract an upper bound weight function $\comb_{\max}$ for the entire day valid with respect to both the predicted and the live traffic.
+Then we run the CCH customization algorithm to obtain $\comb^+_{\max}$.
 
-% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
-% reduced graph bounds
-% reduced graph buckets by predicted bounds
-% bound switching
-
-\subparagraph{Query}
-We build the potential with two instantiations of the Lazy RPHAST algorithm.
-The first one is executed on $G^*$ with the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$.
+The query consists of two instantiations of the Lazy RPHAST algorithm.
+The first one is executed with the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$.
 However, for this instance, we switch the directions and thus compute lower and upper bounds on the distance from the source vertex.
 The second one computes lower bound distances to the target using the $\underline{b'^+}$ weight function.
 To determine evaluation times, the first Lazy RPHAST is used to quickly obtain arrival intervals at arbitrary vertices.
@@ -457,14 +439,21 @@ Typically, only few buckets per edge are relevant, because the arrival intervals
 Also, all outgoing edges of each vertex are evaluated consecutively.
 Thus, having their weights for the same bucket close to each other increases cache hits.
 
-% evaluation time metric pruning
-
-\subparagraph{Correctness}
+\subparagraph{Correctness.}
 The Interval-Minimum Potential is not feasible because we use piecewise constant functions for the the shortcut travel time lower bounds.
 Still, it does satisfy the strong FIFO property because for any given single query, the estimates are constant.
 Moreover, the estimates are lower bounds on the distances.
 This directly follows from the correctness of the CATCHUp preprocessing and the Lazy RPHAST algorithm.
-% metric switching?
+
+\subparagraph{Optimizations.}
+Similarly to the Multi-Metric Potential, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph which accelerates queries.
+Again we use the perfect customization to obtain $\comb^*_{\max}$ and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.
+
+% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
+% reduced graph bounds
+% reduced graph buckets by predicted bounds
+% bound switching
+% evaluation time metric pruning
 
 \subsection{Compression}\label{sec:compression}
 
