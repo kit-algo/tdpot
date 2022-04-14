@@ -90,6 +90,14 @@
 \usepackage[algo2e,vlined]{algorithm2e}
 \usepackage{booktabs}
 
+\usepackage{tikz}
+\tikzstyle{node}=[circle,inner sep=0.5mm,minimum size=6.5mm,draw = black]
+\tikzstyle{snode}=[circle,minimum size=2mm,fill = black]
+\usetikzlibrary{shapes.misc}
+\tikzset{cross/.style={cross out, draw=black, minimum size=2*(#1-\pgflinewidth), inner sep=0pt, outer sep=0pt},
+%default radius will be 1pt.
+cross/.default={1pt}}
+
 \begin{document}
 
 \maketitle
@@ -226,9 +234,10 @@ Preprocessing should still be fast enough to rerun it on a daily basis.
 In the \emph{update} phase, a weight function $l$ of currently observed (constant) live travel times are given for the current moment $\tau^{\operatorname{now}}$.
 Further, each edge has a point in time $\tau^{\operatorname{end}}(e)$ when we switch back to the predicted travel time.
 For edges without live traffic data, we set $\tau^{\operatorname{end}}(e) = \tau^{\operatorname{now}}$.
-We assume that traffic predictions are conservative estimates and that live traffic will only be slower due to accidents and other traffic incidents.
-Thus, we define the combined weight function as follows:
+We define the combined weight function as follows:
 $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{end}}(e)) + \tau^{\operatorname{end}}(e) - \tau))$.
+This definition is based on the assumption that traffic predictions are conservative estimates and that live traffic will only be slower due to accidents and other traffic incidents.
+It follows that $\pred(e, \tau) \leq \comb(e, \tau)$.
 The update phase will be repeated frequently (every few minutes) and should therefore be as fast as possible.
 % We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
 During the final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tau^{\operatorname{now}}$ should be answered as quickly as possible by obtaining the path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
@@ -790,9 +799,68 @@ To the best of our knowledge, this makes our approach the first to achieve almos
 
 \section{Further Discussion of Traffic Model}\label{sec:appendix:model}
 
-% TODO talk about -1 segment
-% TODO visualize
-% TODO inf
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[]
+%axis
+\draw[->] (0,1) -- (8,1);
+\draw[->] (0,1) -- (0,4);
+
+\draw[] (1,4) -- (1,1cm-3pt) node[anchor=north] {$\tau^{\operatorname{now}}$};
+\draw[] (4,4) -- (4,1cm-3pt) node[anchor=north] {$\tau^{\operatorname{end}}(e)$};
+
+%labels
+\node[] () at (8.35, 1) { $\tau$ };
+\node[] () at (0, 4.35) { $\comb(e, \tau)$ };
+
+% function
+\draw[thick] (0,1.5) -- (0.5,1.5) -- (1, 2.2);
+\draw[thick,dotted] (1,2.2) -- (1.5,2.2) -- (2,3) -- (3,2.5) -- (3.7, 2) -- (4,2);
+\draw[thick] (1.84375,2.75) -- (2,3) -- (2.5,2.75);
+\draw[thick] (4,2) -- (4.2,2) -- (5,2.5) -- (5.5,2.5) -- (6,2.1) -- (6.4,2.1) -- (7.5,1.5) node[anchor=west] {$\pred(e)$};
+
+\draw[thick,red] (1.84375,2.75) -- (1,2.75) node[anchor=east,red] {$l(e)$};
+\draw[thick,red,dotted] (1.84375,2.75) -- (2.5,2.75);
+\draw[thick,red] (2.5,2.75) -- (3.25,2.75);
+\draw[thick,red,dotted] (3.25,2.75) -- (4,2.75);
+
+\draw[thick,dotted,blue] (3.25,2.75) -- (2.5,3.5) node[anchor=south,blue, align=center] {$\pred(e, \tau^{\operatorname{end}}(e))$\\$+ \tau^{\operatorname{end}}(e) - \tau$};
+\draw[thick,blue] (3.25,2.75) -- (4,2);
+\end{tikzpicture}
+\caption{
+Example of a combined travel time function $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{end}}(e)) + \tau^{\operatorname{end}}(e) - \tau))$ with both predicted and live traffic information.
+The predicted traffic $\pred(e)$ is indicated in black.
+The live travel time $l(e)$ with expected end $\tau^{\operatorname{end}}(e)$ is depicted in red.
+The switch back to the predicted function is colored in blue.
+The solid line indicates the combined function $\comb(e)$ for the current day.
+Dotted lines are only visualizations.
+}
+\label{fig:combined_tt}
+\end{figure}
+
+Figure~\ref{fig:combined_tt} depicts an example of a combined travel time function.
+We believe that this model is suited very well for practical navigation applications, even though it might not seem as flexible as supporting arbitrary updates to the traffic predictions $p$.
+In fact, we do believe that our model is even better than arbitrary updates to $p$ because all existing speedup techniques rely on $p$ consisting of periodic functions.
+But live traffic incident are inherently tied to the current moment and not expected to repeat in 24 hours.
+
+In~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, a similar model to ours for combined traffic was proposed.
+However, our model slightly defers in two ways.
+First, in our model, the combined function equals the predicted function from moment $\tau^{\operatorname{end}}(e)$ on, while in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function has the live weight until $\tau^{\operatorname{end}}(e)$ and only then starts to approach the predicted function again.
+This allows us to handle blocked edges in a more realistic way.
+In the case of $l(e) = \infty$, i.e.\ the edge is blocked, our combined travel time function for the edge corresponds to waiting until the edge opens up at $\tau^{\operatorname{end}}(e)$.
+With the model from~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function would decrease from $\infty$ towards the predicted function but, of course, never reach it and thus stay completely blocked.
+Second, in our model, we use $\max(p(e, \tau), l(e))$, while the authors of~\cite{strasser_et_al:LIPIcs.SEA.2021.6} use $\max(p_{\min}(e), l(e))$, i.e.\ our model does not allow the live travel time to be less than the predicted travel time.
+Now, one could criticize us for adjusting the model so that our A* approach becomes feasible.
+This would actually be not completely wrong.
+Nevertheless, there are good reasons, why our modelling assumptions are completely fine for practical purposes.
+First, the assumption is realistic.
+Live traffic should account for unexpected traffic events.
+In that case, live travel times will very rarely be better predicted travel times.
+Should live traffic be frequently better than the predicted traffic, than the predicted traffic should be adjusted accordingly.
+Second, the reason to solve such a model to exactness is not that the shortest travel time perfectly matches reality.
+Traffic data is always only an approximation of the reality.
+Rather, obtaining exact results helps to present users with consistent routes where travel times do not suddenly become better when the user takes an unexpected alternative.
+Further, it allows to definitely attribute ``weird'' routes to either bugs in the data or bugs in the implementation which is tremendously useful in practice.
 
 \section{Correctness Properties of Time-Dependent A* Potentials}\label{sec:appendix:correctness}
 
@@ -811,7 +879,7 @@ Therefore, for potentials we require the \emph{strong First-In First-Out} proper
 \pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon, v \in V, \tau \in T, \epsilon \geq 0
 \]
 Note that potentials which only adhere to the regular FIFO property in practice likely work just as well.
-It just breaks the well-definedness of the modified weights for an theoretically equivalent run of Dijkstra's algorithm.
+It just breaks the well-definedness of the modified weights for a theoretically equivalent run of Dijkstra's algorithm.
 
 Shortest paths for these modified weights are the same es with the original weights.
 Consider the weights of two different $s$-$t$ paths.
@@ -850,6 +918,8 @@ Therefore, it is sufficient to guarantee the strong FIFO property at vertex $v$ 
 For the lower bound property it even suffices to guarantee it only at exactly $\tau = \dist(s,v,\tdep)$.
 
 \section{Optimizations}\label{sec:appendix:optimizations}
+
+Before discussing further optimizations, we first need to introduce some additional preliminaries.
 
 which we denote by $\dist^<(u,v)$
 
