@@ -150,7 +150,7 @@ end
 namespace "exp" do
   desc "Run all experiments"
   task queries: [:queries_pred, :queries_live, :compression]
-  task all: [:queries, :customization, :preprocessing]
+  task all: [:queries, :customization, :preprocessing, :compression_par]
 
   directory "#{exp_dir}/rand"
   directory "#{exp_dir}/1h"
@@ -161,6 +161,7 @@ namespace "exp" do
   directory "#{exp_dir}/compression"
   directory "#{exp_dir}/compression_1h"
   directory "#{exp_dir}/compression_times"
+  directory "#{exp_dir}/compression_par"
   directory "#{exp_dir}/preprocessing"
   directory "#{exp_dir}/customization"
 
@@ -283,6 +284,18 @@ namespace "exp" do
           sh "rm -r #{graph}multi_metric_pre"
           sh "rm -r #{graph}multi_metric_pot"
           sh "cargo run --release --bin cchpot_pre -- #{graph} > #{exp_dir}/preprocessing/$(date --iso-8601=seconds).json"
+        end
+      end
+    end
+  end
+
+  task compression_par: ["#{exp_dir}/compression_par"] + ptv_eur do
+    Dir.chdir "code/rust_road_router" do
+      graphs.each do |graph, _|
+        [1, 2, 4, 8, 16].each do |k|
+          sh "RAYON_NUM_THREADS=#{k} cargo run --release --bin interval_min_reduction -- #{graph} 16 customized_corridor_mins reduced_corridor_mins > #{exp_dir}/compression_par/$(date --iso-8601=seconds).json"
+          sh "rm -r #{graph}interval_min_pot"
+          sh "rm -r #{graph}reduced_corridor_mins"
         end
       end
     end
