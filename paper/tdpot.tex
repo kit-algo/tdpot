@@ -833,7 +833,8 @@ The predicted traffic $\pred(e)$ is indicated in black.
 The live travel time $l(e)$ with expected end $\tau^{\operatorname{end}}(e)$ is depicted in red.
 The switch back to the predicted function is colored in blue.
 The solid line indicates the combined function $\comb(e)$ for the current day.
-Dotted lines are only visualizations.
+For later days, only $p$ will be used.
+Dotted lines only serve the purpose of visualization.
 }
 \label{fig:combined_tt}
 \end{figure}
@@ -843,7 +844,7 @@ We believe that this model is suited very well for practical navigation applicat
 In fact, we do believe that our model is even better than arbitrary updates to $p$ because all existing speedup techniques rely on $p$ consisting of periodic functions.
 But live traffic incident are inherently tied to the current moment and not expected to repeat in 24 hours.
 
-In~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, a similar model to ours for combined traffic was proposed.
+In~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, a similar model for combined traffic was proposed.
 However, our model slightly defers in two ways.
 First, in our model, the combined function equals the predicted function from moment $\tau^{\operatorname{end}}(e)$ on, while in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function has the live weight until $\tau^{\operatorname{end}}(e)$ and only then starts to approach the predicted function again.
 This allows us to handle blocked edges in a more realistic way.
@@ -920,13 +921,12 @@ For the lower bound property it even suffices to guarantee it only at exactly $\
 \section{Optimizations}\label{sec:appendix:optimizations}
 
 Before discussing further optimizations, we first need to introduce some additional preliminaries.
-
-which we denote by $\dist^<(u,v)$
-
-It has three steps.
-In the first \emph{basic customization} step, each edge $uv \in E^+$ is processed such that $w^+(uv) = \dist^<(u,v)$.
-This is already sufficient to apply the CH query algorithm and compute correct distances.
-However, the augmented graph has more edges than necessary, which has a negative impact on query performance.
+Recall that shortcut edges $uv \in E^+$ allow skipping over paths of lower ranked vertices.
+We now denote the length of the shortest such path by $\dist^<_w(u,v) = w^+(uv)$.
+In the main part of the paper, we just stated that the CCH customization yields the appropriate weight function $w^+$ for the full augmented graph $G^+$ with $w^+(uv) = \dist^<(u,v)$.
+This is actually only the \emph{basic customization}.
+Because the augmented graph $G^+$ is valid for all possible weight functions, it contains many unnecessary edges for any individual weight function.
+This can be addressed with two additional steps in the customization phase.
 In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
 The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
 Thus, in a final step, these edges are removed and a \emph{reduced augmented graph} $G^*=(V, E^*)$ is constructed.
@@ -935,7 +935,7 @@ All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19
 CATCHUp does not support a time-dependent \emph{perfect} customization.
 However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization on $b^+_{\max}$ which yields $b^*_{\max}$.
 Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed.
-% We will also utilize this insight for our time-dependent potentials.
+We will also utilize this insight for our time-dependent potentials.
 
 \subparagraph{Multi-Metric-Potential.}
 During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
@@ -943,13 +943,13 @@ This allows us to remove unnecessary edges and accelerate the query phase.
 We remove edges $uv$ where $\dist^<_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
 We could remove even more edges if we were to check the condition for every lower bound weight function individually.
 However, in this case we could not reuse the same reduced augmented graph topology for all weight functions.
-As this would roughly double memory consumption we only remove edges which can be removed for all weight functions.
+As this would roughly double memory consumption, we only remove edges which can be removed for all weight functions.
 We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
 % % metric switching?
 
 \subparagraph{Interval-Minimum-Potential.}
 Similarly to the Multi-Metric Potential, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph which accelerates queries.
-Again we use the perfect customization to obtain $\comb^*_{\max}$ and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
+Again we use the perfect customization to obtain $\comb^*_{\max}$ during the update phase and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
 % reduced graph bounds
 % reduced graph buckets by predicted bounds
 % bound switching
