@@ -458,10 +458,10 @@ We implement our algorithms in Rust\footnote{The code for this paper and all exp
 % To compile InertialFlowCutter and RoutingKit which are written in C++, we use GCC~10.3.0 using optimization level 3 and the -march=native option.
 
 \subparagraph{Datasets}
-We evaluate our algorithms on two networks where we have proprietary real-world traffic data available.
+We evaluate our algorithms on two networks where we have proprietary traffic data available.
 Sadly, we can not provide access to these datasets due to non-disclosure agreements.
-The datasets are the same ones used in~\cite{swz-sfert-21,strasser_et_al:LIPIcs.SEA.2021.6}.
-We are not aware of any publicly available traffic feeds or predictions.
+We are not aware of any publicly available real-world traffic feeds or predictions.
+However, as these datasets are the same ones used in~\cite{swz-sfert-21,strasser_et_al:LIPIcs.SEA.2021.6}, at least some comparability is given.
 %
 Our first network, PTV Europe, was provide by PTV\footnote{\url{https://ptvgroup.com}} in 2020 and is based on TomTom\footnote{\url{https://www.tomtom.com}} routing data covering western Europe.
 It has 28.5\,M vertices and 61\,M edges.
@@ -470,18 +470,18 @@ The data includes a traffic incident snapshot from 2020/10/28 07:47 with live sp
 % ignoring too long
 %
 Our second network, OSM Germany, is derived from an early 2020 snapshot of OpenStreetMap and converted into a routing graph using RoutingKit\footnote{\url{https://github.com/RoutingKit/RoutingKit}}.
-The graph has 16.2\,M vertices and 35.2\,M edges.
+It has 16.2\,M vertices and 35.2\,M edges.
 For this instance, we have proprietary traffic data provided by Mapbox\footnote{\url{https://mapbox.com}}.
-This includes traffic predictions for 38\% of the edges as predicted speeds for all five minute periods over the course of a entire week.
+This includes traffic predictions for 38\% of the edges as predicted speeds for all five minute periods over the course of a week.
 We only use the predictions for one day.
 Also, we exclude speed values which are faster than the freeflow speed computed by RoutingKit.
 The data also includes two live traffic snapshots in the form of OSM node ID pairs and live speeds for the edge between the vertices.
 One is from Friday 2019/08/02 15:41 and contains 320\,K vertex pairs and the other from Tuesday 2019/07/16 10:21 and contains 185\,K vertex pairs.
-The datasets do no contain any estimate how long the observed live speeds are valid.
-We therefore set $\tau_e^{\operatorname{end}}$ to one hour after the snapshot time.
+The datasets do no contain any estimate for how long the observed live speeds will be valid.
+We set $\tau^{\operatorname{end}}$ to one hour after the snapshot time.
 % relative delays?
 Note that even though it is smaller and has less time-dependent edges, OSM Germany is actually the harder instance.
-This is because it has more breakpoints per time-dependent edge (124.8 compared to 22.5 on PTV Europe) and the predicted travel times fluctuate much stronger.
+This is because it has more breakpoints per time-dependent edge (124.8 compared to 22.5 on PTV Europe) and the predicted travel times fluctuate stronger.
 
 % {
 %   "args": [
@@ -516,6 +516,25 @@ This is because it has more breakpoints per time-dependent edge (124.8 compared 
 %   }
 % }
 
+\subparagraph{Methodology}
+We evaluate our algorithms by sequentially solving batches of 100\,K shortest path queries with three different query sets:
+First, there are \emph{random} queries where source and target are drawn from all vertices uniformly at random.
+These are mostly long-range queries.
+Second are \emph{1h} queries where we draw a source vertex uniformly at random, run Dijkstra's algorithm from it and pick the first node with a distance greater one hour as the target.
+Third, we generate queries following the established Dijkstra rank methodology~\cite{ss-hhhes-05} for a thorough investigation of the performance by query distance.
+For these \emph{rank} queries, we pick a source uniformly at random and run Dijkstra's algorithm from it.
+We use every $2^{i}$th settled vertex as the target for a query of Dijkstra rank $2^i$.
+For queries with only predicted traffic, we pick $\tdep$ uniformly at random.
+When using live traffic, we set $\tdep = \tau^{\operatorname{now}}$.
+To evaluate the performance of the preprocessing and update phases, we run them 10 and 100 times, respectively.
+Preprocessing and update phases utilize all cores using 16 threads.
+
+\subparagraph{Algorithms}
+% In our experiments, we run A* with different potentials.
+We denote Multi-Metric Potentials by MMP and Interval-Minimum Potential by IMP.
+Additionally, we compare against time-independent CCH-Potentials which is the only other speedup technique we are aware of to support our problem model.
+Dijkstra's algorithm without any acceleration is our baseline.
+
 \begin{table}
 \centering
 \caption{
@@ -526,40 +545,29 @@ Additionally, we report preprocessing and update times and the memory consumptio
 \input{table/pot_perf.tex}
 \end{table}
 
-\subparagraph{Methodology}
-We evaluate our algorithms with batches of 100\,K shortest path queries solved sequentially using three different query sets:
-First, there are random queries where source and target are drawn from all vertices uniformly at random which leads to mostly long-range queries.
-Second are 1h queries where we draw a source vertex uniformly at random, run Dijkstra's algorithm from it and pick the first node with a distance greater one hour as the target.
-Third, following the established Dijkstra rank methodology~\cite{ss-hhhes-05}, we generate rank queries for a thorough investigation of the performance by query distance.
-For the rank queries, we pick a source uniformly at random and run Dijkstra's algorithm from it.
-We use every $2^{i}$th settled vertex as the target for a query of Dijkstra rank $2^i$.
-To evaluate the performance of the preprocessing and update phases, we run them 10 and 100 times, respectively.
-Preprocessing and update phases utilize all cores using 16 threads.
-
-\subparagraph{Algorithms}
-% In our experiments, we run A* with different potentials.
-We denote the Multi-Metric Potentials as MMP and the Interval-Minimum Potential as IMP.
-Additionally, we compare against the time-independent CCH-Potential which is the only other speedup technique we are aware of to support our problem model.
-Dijkstra's algorithm without any acceleration is our baseline.
-
 \subparagraph{Experiments} In Table~\ref{tab:pot_perf}, we report key performance results for our time-dependent potential functions.
-We observe that IMP is the fastest approach by a significant margin, up to almost an order of magnitude faster than the time-independent CCH-Potential and at least almost two orders of magnitude faster than Dijkstra's algorithm.
-The search space reduction is even stronger but this does not fully translate to running times due to the higher overhead of the IMP.
+We observe that IMP is the fastest approach by a significant margin, up to almost an order of magnitude faster than time-independent CCH-Potentials and at least almost two orders of magnitude faster than Dijkstra's algorithm.
+The search space reduction is even greater but this does not fully translate to running times due to the higher overhead of IMP.
 With only predicted traffic, it as only two to three times slower than CATCHUp~\cite{swz-sfert-21}.
 This shows that using A* to gain algorithmic flexibility comes at a price but the overhead compared to purely hierarchical techniques is manageable.
-In contrast, the MMP is only slightly faster than the CCH-Potential.
-This is expected since random queries are mostly long-range for which the MMP is not particularly well suited.
+In contrast, MMP is only slightly faster than CCH-Potentials.
+This is expected since random queries are mostly long-range for which MMP is not particularly well suited.
 
-Preprocessing running times are within a couple of minutes for CCH-Potentials and the MMP.
-IMP is significantly more expensive because of the time-dependent CATCHUp preprocessing.
+Preprocessing running times are within a couple of minutes for CCH-Potentials and MMP.
+IMP preprocessing is significantly more expensive because of the time-dependent CATCHUp preprocessing.
 This is especially pronounced on OSM Ger where the time-dependent travel time functions fluctuate strongly.
 Still, running preprocessing algorithms on a daily basis is quite possible.
-Real-time traffic updates are possible within a fraction of a minute for both our approaches.
-MMP is slightly slower because it uses in the default configuration a few more weight functions.
-Without the use of compression, both our approaches are quite expensive in terms of memory consumption.
-We investigate the performance with compression in Figure~\ref{fig:compression}.
+This also underlines, that frequently running a CATCHUp customization to include live traffic is not feasible.
+For both our approaches, real-time traffic updates are possible within a fraction of a minute.
+MMP is slightly slower because it uses a few more weight functions.
+Both our approaches are quite expensive in terms of memory consumption but this can be mitigated through the use of compression (see Figure~\ref{fig:compression}).
 
-\begin{figure}
+Introducing live traffic decreases the quality of the estimates and thus increases search space sizes and running times.
+For IMP, this increases running times to up to 38\,ms with heavy rush hour traffic which is still more than 90 times faster than Dijkstra's algorithm.
+Surprisingly, for CCH-Potentials and MMP, this scenario seems to be easier to handle than lite midday traffic.
+This is actually an effect of the \emph{predicted} traffic which also has a strong influence on the performance of CCH-Potentials and MMP depending on the departure time.
+
+\begin{figure}[tbh]
 \centering
 \includegraphics[width=\linewidth]{fig/perf_over_day.pdf}
 \caption{
@@ -569,22 +577,16 @@ The resulting running times are grouped by the departure time hour.
 }\label{fig:by_dep}
 \end{figure}
 
-Introducing live traffic decreases the quality of the potential estimates and thus increases search space sizes and running times.
-For IMP this brings running times up to 38\,ms with heavy traffic which is still more than 90 times faster than Dijkstra's algorithm.
-Surprisingly, for CCH-Potentials and MMP, heavier traffic seems to be easier to handle than lite traffic.
-This is because we set the departures for the queries corresponding to the live traffic snapshot and use random departures for only predicted traffic.
-However, the departure time has a significant influence on the performance.
-
-Figure~\ref{fig:by_dep} depicts query performance by queried departure time over the course of the day.
+Figure~\ref{fig:by_dep} depicts query performance by departure time over the course of the day.
 Clearly, the departure time has a significant influence both for short-range and long-range queries.
-For long-range queries, the peaks are shifted and somewhat smeared because of the time (on average four to five hours) covered in the query.
-This dependence on the departure is the time why the heavy traffic (departure 15:41) appears to be easier than the lite (departure 10:21) for MMP and CCH-Potentials.
-For IMP, the influence of the departure time is much smaller which makes it the fastest for all times on long-range queries.
-For short-range queries, the other potentials are actually faster during the night due to the large overhead of the IMP.
-Moreover, the MMP is roughly as fast as the IMP for 1h queries during the daytime.
-Therefore, MMP may actually be a very simple and practical approach for many practical applications where short-range queries are much more prominent.
+For long-range queries, the peaks are shifted and smeared because of the time (on average four to five hours on OSM Germany) covered in the query.
+This is the reason why the heavy afternoon traffic appears to be easier than the lite late morning traffic for MMP and CCH-Potentials.
+For IMP, the influence of the departure time is much smaller which makes it consistently the fastest approach on long-range queries.
+For short-range queries, the large overhead of IMP make it the slowest during the night.
+Moreover, MMP is roughly as fast as IMP for 1h queries during the daytime.
+Therefore, MMP may actually be a very simple and practical approach for practical applications where short-range queries are more prominent.
 
-\begin{figure}
+\begin{figure}[!b]
 \centering
 \includegraphics[width=\linewidth]{fig/ranks.pdf}
 \caption{
@@ -595,21 +597,24 @@ All other running times are indicated as outliers.
 }\label{fig:ranks}
 \end{figure}
 
-In Figure~\ref{fig:ranks}, we investigate the performance by query distance.
-The experiments confirms our analysis from the departure time experiment.
-For short-range queries, IMP is slower than the other approaches because it is expensive to evaluate but it scales much better to long-range queries because of its tighter estimates.
+Figure~\ref{fig:ranks} depicts the performance by query distance.
+For short-range queries, IMP is slower than the other approaches because it is expensive to evaluate but it scales much better to long-range queries because of better estimates.
 Also the running times are much more stable and have a smaller variance.
 Even for rank 24, most queries can be answered within a few tenths of milliseconds.
-Nevertheless, the MMP is actually faster on most ranks.
-Only at rank 24, the running times become as slow as the CCH-Potentials baseline.
-The reason for the strong jump from 23 to 24 is that the mean query distance jumps from five to six hours on rank 23 to over eight hours which is longer than the longest covered interval.
-Thus on rank 24, the MMP will fill back to a regular CCH-Potential on most queries.
+Nevertheless, MMP is actually faster on most ranks.
+Only at rank 24, MMP running times become as slow as the CCH-Potentials baseline.
+A strong jump in MMP running times can be observed from rank 23 to 24.
+This is because the mean query distance jumps from five to six hours on rank 23 to over eight hours on rank 24 which is longer than the longest covered interval.
+Thus on rank 24, MMP will fill back to classical CCH-Potentials on many queries.
 We also observe a few strong outliers.
 This happens because of blocked streets in the live traffic data.
 When the target vertex of a query is only reachable through a blocked road segment, A* will traverse large parts of the networks until the blocked road opens up.
-This affects all three potentials in the same way.
+This affects all three potentials in the same way and demonstrates an inherent weakness of A*-based approaches: the performance always depends on the quality of the estimates.
+However, to the best of our knowledge, our approach is the only one to enable live-traffic updates within less than minute.
+Time-dependent customization algorithms on realistic instances are just too expensive for frequent rerunning.
+Therefore, by significantly improving query times over CCH-Potentials, our approach is the first to achieve almost real-time queries across all distances in a combined live and predicted traffic setting. % TODO reword
 
-\begin{figure}
+\begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{fig/compression.pdf}
 \caption{
@@ -620,20 +625,21 @@ The second plot contains a boxplot of the per query relative slowdown over the r
 
 Finally, we investigate the effects of reducing the number of weight functions.
 Figure~\ref{fig:compression} depicts the results.
-The MMP appears to be very robust against compression.
+MMP appears to be very robust against compression.
 We can reduce the number of weight functions to 16 (a memory usage reduction of about a factor of 6) before the slowdowns become noticeable in the mean running time.
-However, the MMP also only achieves relatively small speed-ups compared to a CCH-Potential (rarely more than a factor of three).
+However, MMP also only achieves relatively small speed-ups compared to CCH-Potentials, i.e.\ rarely more than a factor three.
 Therefore, its robustness is not particularly surprising.
-The IMP, which achieves much greater speed-ups is less robust against compression.
-Nevertheless, we can reduce the memory consumption by a factor of about three (to 32 functions) and still achieve very decent query running times.
+IMP, which achieves stronger speed-ups, is less robust against compression.
+Nevertheless, we can reduce the memory consumption by a factor of about three to 32 functions and still achieve very decent query times.
 With 32 functions, the absolute memory consumption goes down to less than 20\,GB which is at least manageable.
-% on long range queries still when reduced to 4 faster than MMP
+Surprisingly, even with only four weight functions, IMP is still faster than MMP on long-range queries.
+This clearly shows the superiority of IMP over MMP for long-range queries. % TODO reword
 The running time of the compression algorithm is generally relatively short compared to the rest of the preprocessing because of the efficient parallelization.
 See Appendix~\ref{sec:appendix:parallelization} for further details.
 
 \section{Conclusion}
 
-In this paper, we proposed time-dependent A* potentials for efficient routing in time-dependent road networks with both predicted and live traffic.
+In this paper, we proposed time-dependent A* potentials for efficient and exact routing in time-dependent road networks with both predicted and live traffic.
 We presented two realizations of time-dependent potentials with different trade-offs and showed how to apply them in this setting.
 Both allow fast live traffic updates within a fraction of a minute.
 We achieve query times two orders of magnitude faster than Dijkstra's algorithm and up to an order of magnitude faster than state-of-the-art time-independent potentials.
