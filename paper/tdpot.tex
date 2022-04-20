@@ -341,47 +341,47 @@ The goal is to reduce the impact of the potential evaluation overhead by avoidin
 \section{Time-Dependent A* Potentials}
 
 In this section, we propose two time-dependent A* potentials which are both extensions of Lazy RPHAST.
-Lazy RPHAST/CH-Potentials is already quite an efficient potential and obtains exact distances with respect to scalar lower bound weights, i.e.\ the tightest possible estimates with a time-independent potential definition.
+Lazy RPHAST/CH-Potentials is already quite an efficient potential and obtains exact distances with respect to scalar lower bound weights, i.e.\ the tightest estimates which are possible with a time-independent potential definition.
 To outperform CH-Potentials, we must not only obtain significantly tighter estimates but also be careful to not make the potential evaluation too expensive.
 Therefore, we avoid costly operations on functions and work with scalar values as much as possible.
-Also, even though our potentials are time-dependent, computed estimates during an individual query will typically \emph{not} change depending on the visit time.
+As a result, even though our potentials are time-dependent, computed estimates during an individual query will \emph{not} change depending on the visit time.
 
-\subsection{Multi-Metric Potential}
+\subsection{Multi-Metric Potentials}
 
-Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival at the target.
+Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival time at the target.
 Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l_{[\tau', \tau'']}(e) = \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
 Clearly, $\dist_{l_{[\tau', \tau'']}}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
-If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too big, the estimates will be significantly tighter than global lower bound distances.
-The \emph{Multi-Metric Potential} is based on this observation.
+If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too large, the estimates will be significantly tighter than global lower bound distances.
+The \emph{Multi-Metric Potentials} approach is based on this observation.
 Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions valid for different time intervals.
 At query time, we then select an appropriate weight function.
-Efficiently computing distances with respect to the selected weight function is done with the Lazy RPHAST.
+Efficiently computing distances with respect to the selected weight function is done with Lazy RPHAST.
 
 \subparagraph{Phase Details.}
-The very first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute an importance ordering and construct the unweighted augmented graph.
+The first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute an importance ordering and construct the unweighted augmented graph.
 Now let $I$ be a set of time intervals.
 In our implementation,
 we cover the time between 6:00 and 22:00 with intervals of length one, two, four and eight hours, starting every 30 minutes,
 and one interval covering the entire day.
-We do not keep any additional intervals between 22:00 and 6:00 as most edges will have their freeflow travel time during this time.
+We do not maintain any additional intervals between 22:00 and 6:00 as most edges will have their freeflow travel time during this time.
 Thus, the lower bound weights in these intervals would be equal to the full-day lower bounds.
-During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l_{[\tau_i', \tau_i'']}$ and run the CCH basic customization algorithm for each interval to obtain $l_{[\tau_i', \tau_i'']}^+$.
+During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l_{[\tau_i', \tau_i'']}$ and run the CCH customization algorithm to obtain $l_{[\tau_i', \tau_i'']}^+$.
 This can be trivially parallelized.
 Also, the customization can be parallelized internally.
 For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19,ghuw-fbndocch-19}.
 
 During the update phase, we compute an additional lower bound weight function for $[\tau^{\operatorname{now}}, \tau^{\operatorname{now}} + 59\,\operatorname{minutes}]$ which incorporates the current live traffic situation $\comb$ and run the basic customization for it.
-Further, we extract an upper bound weight function $\comb_{\max}$ valid for the entire day with respect to both the predicted and the live traffic and perform the CCH basic customization to obtain $\comb^+_{\max}$.
+Further, we extract an upper bound weight function $\comb_{\max}$ which is valid for the entire day with respect to both the predicted and the live traffic and perform the CCH basic customization to obtain $\comb^+_{\max}$.
 
 The query starts with a classical CCH query on the customized upper bound $\comb^+_{\max}$ to obtain a pessimistic estimate of $\tmax$.
-We then select the shortest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
+We then select the smallest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
 Running Lazy RPHAST on $G^*_l$ with the customized weight function $l_{[\tau_i', \tau_i'']}^+$ of this interval yields the desired potential function.
-See Appendix~\ref{sec:appendix:optimizations} for some additional optimizations.
+See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 
 \subparagraph{Correctness.}
-For any given single query, the multi metric potential actually is a time-independent potential which returns exact shortest distance with respect to a valid lower bound weight function.
+For any given single query, multi-metric potentials are actually time-independent and return the exact shortest distances with respect to a valid lower bound weight function.
 Constant potentials trivially adhere to the strong FIFO property.
-Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances by a lower bound weight function are feasible.
+Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances for a lower bound weight function are feasible potentials.
 
 \subsection{Interval-Minimum Potential}
 
