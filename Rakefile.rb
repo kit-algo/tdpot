@@ -289,7 +289,7 @@ namespace "exp" do
     end
   end
 
-  task compression_par: ["#{exp_dir}/compression_par"] + ptv_eur do
+  task compression_par: ["#{exp_dir}/compression_par", ptv_eur] do
     Dir.chdir "code/rust_road_router" do
       graphs.each do |graph, _|
         [1, 2, 4, 8, 16].each do |k|

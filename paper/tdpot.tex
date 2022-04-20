@@ -642,9 +642,10 @@ IMP, which achieves stronger speed-ups, is less robust against compression.
 Nevertheless, we can reduce the memory consumption by a factor of about three to 32 functions and still achieve very decent query times.
 With 32 functions, the absolute memory consumption goes down to less than 20\,GB which is at least manageable.
 Surprisingly, even with only four weight functions, IMP is still faster than MMP on long-range queries.
-This clearly shows the superiority of IMP over MMP for long-range queries. % TODO reword
-The running time of the compression algorithm is generally relatively short compared to the rest of the preprocessing because of the efficient parallelization.
-See Appendix~\ref{sec:appendix:parallelization} for further details.
+This clearly shows the superiority of IMP for long-range queries.
+The compression algorithm itself takes less than a minute, depending on the final number of weight functions.
+Thus, its running time is dominated by the regular preprocessing.
+See Appendix~\ref{sec:appendix:parallelization} for further details on the effectiveness of the parallelization.
 
 \section{Conclusion}
 
@@ -803,8 +804,8 @@ To the best of our knowledge, this makes our approach the first to achieve almos
 \centering
 \begin{tikzpicture}[]
 %axis
-\draw[->] (0,1) -- (8,1);
-\draw[->] (0,1) -- (0,4);
+\draw[->, thick] (0,1) -- (8,1);
+\draw[->, thick] (0,1) -- (0,4);
 
 \draw[] (1,4) -- (1,1cm-3pt) node[anchor=north] {$\tau^{\operatorname{now}}$};
 \draw[] (4,4) -- (4,1cm-3pt) node[anchor=north] {$\tau^{\operatorname{end}}(e)$};
@@ -814,18 +815,18 @@ To the best of our knowledge, this makes our approach the first to achieve almos
 \node[] () at (0, 4.35) { $\comb(e, \tau)$ };
 
 % function
-\draw[thick] (0,1.5) -- (0.5,1.5) -- (1, 2.2);
-\draw[thick,dotted] (1,2.2) -- (1.5,2.2) -- (2,3) -- (3,2.5) -- (3.7, 2) -- (4,2);
-\draw[thick] (1.84375,2.75) -- (2,3) -- (2.5,2.75);
-\draw[thick] (4,2) -- (4.2,2) -- (5,2.5) -- (5.5,2.5) -- (6,2.1) -- (6.4,2.1) -- (7.5,1.5) node[anchor=west] {$\pred(e)$};
+\draw[very thick] (0,1.5) -- (0.5,1.5) -- (1, 2.2);
+\draw[very thick,dotted] (1,2.2) -- (1.5,2.2) -- (2,3) -- (3,2.5) -- (3.7, 2) -- (4,2);
+\draw[very thick] (1.84375,2.75) -- (2,3) -- (2.5,2.75);
+\draw[very thick] (4,2) -- (4.2,2) -- (5,2.5) -- (5.5,2.5) -- (6,2.1) -- (6.4,2.1) -- (7.5,1.5) node[anchor=west] {$\pred(e)$};
 
-\draw[thick,red] (1.84375,2.75) -- (1,2.75) node[anchor=east,red] {$l(e)$};
-\draw[thick,red,dotted] (1.84375,2.75) -- (2.5,2.75);
-\draw[thick,red] (2.5,2.75) -- (3.25,2.75);
-\draw[thick,red,dotted] (3.25,2.75) -- (4,2.75);
+\draw[very thick,red] (1.84375,2.75) -- (1,2.75) node[anchor=east,red] {$l(e)$};
+\draw[very thick,red,dotted] (1.84375,2.75) -- (2.5,2.75);
+\draw[very thick,red] (2.5,2.75) -- (3.25,2.75);
+\draw[very thick,red,dotted] (3.25,2.75) -- (4,2.75);
 
-\draw[thick,dotted,blue] (3.25,2.75) -- (2.5,3.5) node[anchor=south,blue, align=center] {$\pred(e, \tau^{\operatorname{end}}(e))$\\$+ \tau^{\operatorname{end}}(e) - \tau$};
-\draw[thick,blue] (3.25,2.75) -- (4,2);
+\draw[very thick,dotted,blue] (3.25,2.75) -- (2.5,3.5) node[anchor=south,blue, align=center] {$\pred(e, \tau^{\operatorname{end}}(e))$\\$+ \tau^{\operatorname{end}}(e) - \tau$};
+\draw[very thick,blue] (3.25,2.75) -- (4,2);
 \end{tikzpicture}
 \caption{
 Example of a combined travel time function $\comb(e, \tau) = \max(\pred(e, \tau), \min(l(e), \pred(e, \tau^{\operatorname{end}}(e)) + \tau^{\operatorname{end}}(e) - \tau))$ with both predicted and live traffic information.
@@ -845,7 +846,7 @@ In fact, we do believe that our model is even better than arbitrary updates to $
 But live traffic incident are inherently tied to the current moment and not expected to repeat in 24 hours.
 
 In~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, a similar model for combined traffic was proposed.
-However, our model slightly defers in two ways.
+Our model slightly differs in two ways.
 First, in our model, the combined function equals the predicted function from moment $\tau^{\operatorname{end}}(e)$ on, while in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function has the live weight until $\tau^{\operatorname{end}}(e)$ and only then starts to approach the predicted function again.
 This allows us to handle blocked edges in a more realistic way.
 In the case of $l(e) = \infty$, i.e.\ the edge is blocked, our combined travel time function for the edge corresponds to waiting until the edge opens up at $\tau^{\operatorname{end}}(e)$.
@@ -872,7 +873,7 @@ With arrival time functions, we can represent path lengths simply as the composi
 Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on a graph $G$ with time-dependent travel times $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's on the same graph with modified weights $w'$.
 Consider a vertex $u$ with an arrival time of $\tau$.
 In A*, its queue key is $\tau' = \hat{\pi}_t(u, \tau)$.
-When relaxing an edge $uv$, we get a queue key of $\hat{\pi}_t(u, \hat{w}(uv, \tau))$ at $v$.
+When relaxing an edge $uv$, we get a queue key of $\hat{\pi}_t(v, \hat{w}(uv, \tau))$ at $v$.
 Thus, by definition we get $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$ where $\hat{\pi}_t(u)^{-1}$ is the inverted arrival time function, i.e.\ a \emph{departure time} function.
 For $\hat{\pi}_t(u)^{-1}$ to be well defined, we need $\tau_1 \neq \tau_2 \implies \hat{\pi}_t(\tau_1) \neq \hat{\pi}_t(\tau_2)$.
 Therefore, for potentials we require the \emph{strong First-In First-Out} property:
@@ -937,7 +938,7 @@ However, a decent number of unnecessary edges can still be identified by running
 Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed.
 We will also utilize this insight for our time-dependent potentials.
 
-\subparagraph{Multi-Metric-Potential.}
+\subparagraph{Multi-Metric Potentials.}
 During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
 This allows us to remove unnecessary edges and accelerate the query phase.
 We remove edges $uv$ where $\dist^<_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
@@ -945,9 +946,16 @@ We could remove even more edges if we were to check the condition for every lowe
 However, in this case we could not reuse the same reduced augmented graph topology for all weight functions.
 As this would roughly double memory consumption, we only remove edges which can be removed for all weight functions.
 We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
-% % metric switching?
 
-\subparagraph{Interval-Minimum-Potential.}
+The tightness of MMP can be improved further by switching to weight functions for smaller intervals during the progress of the query.
+When initializing the potential, we select, beside $[\tau_i', \tau_i''] \supseteq [\tdep,\tmax]$, additional intervals $[\tau_j', \tau_j''] \subset [\tau_i', \tau_i'']$ with $\tau_j'' \geq \tmax$.
+When evaluating the potential of a vertex at instant $\tau$, we use the weight function with the shortest associated interval which still includes $\tau$.
+However, running Lazy RPHAST separately for each of these weight functions would be too expensive.
+Therefore, we modify the DFS part of Lazy RPHAST to track, beside the distances $\mathtt{D}[u]$, also the weight function $\mathtt{W}[u]$ which was used.
+Then, an already memoized distance $\mathtt{D}[v]$ for vertex $v$ can be reused if the interval associated with $\mathtt{W}[v]$ is a superset of the best interval for $\tau$.
+By passing $\tau$ unmodified to recursive invocations, we can maintain the invariant that if $\mathtt{D}[v]$ is final and valid for $\tau$, also all vertices in the CH search space of $v$ will have a valid lower bound for at least time $\tau$.
+
+\subparagraph{Interval-Minimum Potentials.}
 Similarly to the Multi-Metric Potential, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph which accelerates queries.
 Again we use the perfect customization to obtain $\comb^*_{\max}$ during the update phase and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
 % reduced graph bounds
