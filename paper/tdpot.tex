@@ -108,15 +108,14 @@ We study efficient and exact shortest path algorithms for routing on road networ
 For navigation applications, both current (i.e., live) traffic events and predictions of future traffic flows play an important role in routing.
 % In this work, we propose a combined model which integrates both aspects.
 While preprocessing-based speedup techniques have been employed successfully to both settings individually, a combined model poses significant challenges.
-Supporting predicted traffic typically requires expensive and complex preprocessing while live traffic requires fast updates for regular adjustments.
+Supporting predicted traffic typically requires expensive preprocessing while live traffic requires fast updates for regular adjustments.
 We propose an A*-based solution to this problem.
-To enable fast queries, we generalize A* potentials to time-dependency, i.e.\ estimates of the remaining distance also depend on the time of day when a vertex is visited.
-We then present, implement and evaluate two realizations of time-dependent potentials.
+To enable fast queries, we generalize A* potentials to time dependency, i.e.\ the estimate of the distance from a vertex to the target also depends on the time of day when the vertex is visited.
+We then present two realizations of time-dependent potentials.
 % propose td pots for better estimates and better usage of preprocessing to achieve faster TD queries than previously possible with A*
 % becasue pots need not be exact higher flexibility to support live traffic
-An experimental evaluation confirms the effectiveness of our approach.
-Live traffic updates can be realized within a fraction of a minute.
-Queries can be answered two orders of magnitude faster than with Dijkstra's algorithm, achieving interactive performance, and up to one order of magnitude faster than with competing state-of-the-art approaches.
+Our evaluation shows that our approach enables interactive query times on continental-sized road networks while allowing live traffic updates within a fraction of a minute.
+We achieve a speedup of at least two orders of magnitude over Dijkstra's algorithm and up to one order of magnitude over competing state-of-the-art approaches.
 \end{abstract}
 
 \section{Introduction}
@@ -138,17 +137,17 @@ Dijkstra's algorithm can be used to solve these problems exactly and, at least f
 However, on the continental-sized road networks used in modern routing applications, it may take seconds to answer mid- or long-range queries, which is too slow for most practical applications.
 We therefore study algorithms to compute shortest paths significantly faster than Dijkstra's algorithm while retaining exactness.
 
-In this work, we utilize the A* algorithm~\cite{hnr-afbhd-68}.
-A* can be seen as an extension of Dijkstra's algorithm.
-Dijkstra's algorithm explores all vertices closer to the source than the target by utilizing a priority queue which orders vertices by their distance from the source vertex.
-A* changes the order in which vertices are visited by adding an estimate of the remaining distance to the queue key, sometimes called \emph{heuristic} or \emph{potential}.
-The performance depends on the tightness of these estimates.
-The core algorithmic idea of this work is to use time-dependent potential functions, i.e.\ we obtain tighter estimates and therefore faster queries by taking the time of day when a vertex is visited into account.
+One approach to accelerate Dijkstra's algorithm is goal-directed search, i.e.\ the A* algorithm~\cite{hnr-afbhd-68}.
+% The A* algorithm~\cite{hnr-afbhd-68} is a well-known extension of Dijkstra's algorithm.
+Dijkstra's algorithm uses a priority queue to explore vertices by ascending distance from the source until it reaches the target.
+A* changes this slightly and employs a \emph{potential} function which estimates the remaining distance from vertices to the target to change the queue order and explore vertices closer to the target earlier.
+The performance of A* crucially depends on the tightness of these estimates.
+The core algorithmic idea of this work is to use A* with time-dependent potential functions, i.e.\ we obtain tighter estimates and therefore faster queries by taking the time of day when a vertex is visited into account.
 
 \subsection{Related Work}
 
 Efficient and exact route planning in road networks has received a significant amount of research effort in the past decade.
-Since a comprehensive overview is beyond the scope of this paper, we refer to~\cite{bdgmpsww-rptn-16} for an overview.
+Since a comprehensive discussion is beyond the scope of this paper, we refer to~\cite{bdgmpsww-rptn-16} for an overview.
 An approach that has proven effective is to exploit the fact that usually many queries have to be answered on the same network, which rarely changes.
 Thus, these queries can be accelerated by computing auxiliary data in an off-line preprocessing phase.
 
@@ -159,47 +158,48 @@ This allows for a very fast query where only few vertices are explored.
 On typical continental-sized networks, queries take well below a millisecond.
 \emph{Multi-Level Dijkstra} (MLD)~\cite{swz-umlgt-02} is a similar approach which also utilizes shortcut edges but inserts them based on a multi-level partitioning.
 It achieves slightly slower query times of around a millisecond.
-MLD is the first algorithm to operate under the \emph{Customizable Route Planning} (CRP) framework~\cite{dgpw-crprn-13}.
-The \emph{customization} is a second, faster preprocessing phase which allows integrating arbitrary weight functions (or live traffic updates for the current weights) into the auxiliary data without rerunning the entire first preprocessing phase, which is much slower.
+MLD is the first algorithm to operate under the \emph{Customizable Route Planning} (CRP) framework~\cite{dgpw-crprn-13}, i.e.\ it has a second, faster preprocessing phase called \emph{customization} which allows integrating arbitrary weight functions (or live traffic updates for the current weights) into the auxiliary data without rerunning the entire first preprocessing phase, which is much slower.
 The MLD customization takes a few seconds, which allows running it every minute.
+This three-phase setup has proven to be instrumental to support live traffic scenarios in practical applications~\cite{bingblog}. % TODO
 CH has later been generalized to support customizability as well, which resulted in Customizable Contraction Hierarchies (CCH)~\cite{dsw-cch-15}.
 
 Both CH and MLD have been extended to time-dependent routing.
 However, dealing with weight functions instead of scalar weights makes the preprocessing much harder and leads to difficult trade-offs.
 TCH~\cite{bgsv-mtdtt-13} has fast queries but a very expensive preprocessing phase (up to several hours) and may produce prohibitive amounts of auxiliary data (> 100\,GB).
 % TODO 3-phase not introduced
-TD-CRP~\cite{bdpw-dtdrp-16}, an extension of MLD, still follows a three-phase approach and has a relatively fast customization phase.
+TD-CRP~\cite{bdpw-dtdrp-16}, an extension of MLD, even follows a three-phase approach and has a relatively fast customization phase.
 However, this is only possible by giving up exactness.
 Also, TD-CRP does not support path unpacking.
 CATCHUp~\cite{swz-sfert-21} adapts CCH to the time-dependent setting and has fast and exact queries with significantly reduced memory consumption.
 While it has a customization phase, running it takes significantly longer than a traditional CCH or CRP customization.
-On the benchmark graphs used in this paper, a CATCHUp customization may even take hours, which is too slow for a setting with live traffic updates.
+On the networks used in this paper, a CATCHUp customization may even take hours, which is too slow for a setting with live traffic updates.
 % TDS?, (Shark?)
 
-A*~\cite{hnr-afbhd-68} has also been utilized in speed-up techniques for routing in road networks.
-With ALT~\cite{gh-cspas-05,gw-cppsp-05}, a few landmark vertices are selected during preprocessing.
-From and to these vertices, distances to all other vertices are precomputed.
-During queries, these distances are combined using the triangle inequality to obtain distance estimates to the target vertex.
+ALT~\cite{gh-cspas-05,gw-cppsp-05} is an early A*-based speedup technique for routing in road networks.
+It combines precomputed distances to a few \emph{landmark} vertices with the triangle inequality to obtain distance estimates to the target vertex.
 % ALT has also received research interest in areas beyond route planning.
 However, query times are significantly slower than with shortcut-based approaches such as CH or MLD.
 ALT has also been extended to dynamic and time-dependent settings~\cite{dn-crdtd-12}. % combined?
-However, the model studied there is not as general as with customization-based approaches.
+While this approach allows incremental modifications of the input travel times, it is not as flexible as customization based approaches which allow arbitrary updates.
 % Core-ALT?
 
-Another more recent A*-based approach is CH-Potentials~\cite{strasser_et_al:LIPIcs.SEA.2021.6}.
-CH-Potentials extract exact distances from a CH using Lazy RPHAST which we also use heavily in this work.
-This leads to tighter estimates and faster queries than what is possible with ALT.
-CH-Potentials can be applied to a variety of routing problem variants and the original publication even mentions a combination of live and predicted traffic.
-However the reported query times are above 100\,ms, which we consider too slow for practical applications.
+\emph{CH-Potentials}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is another more recent A*-based approach.
+CH-Potentials use Lazy RPHAST~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, an incremental many-to-one CH query variant, to compute exact distances toward the target.
+% CH-Potentials extract exact distances from a CH using Lazy RPHAST which we also use heavily in this work.
+This allows for tighter estimates and faster queries than what is possible with ALT.
+CH-Potentials can be applied to a variety of routing problem variants.
+The original publication even mentions a combination of live and predicted traffic.
+However, the reported query times are above 100\,ms.
+We consider this too slow for practical applications.
 
 \subsection{Contribution}
 
 In this work, we introduce a time-dependent generalization of A* potentials.
 We present two simple extensions of Lazy RPHAST which realize a time-dependent potential function and discuss how to apply them to queries in a setting which combines live and predicted traffic.
-An extensive evaluation confirms the practical applicability of our algorithms.
+An extensive evaluation confirms the practical applicability of our potentials.
 Queries incorporating both predicted and current traffic can be answered fast enough to enable interactive applications.
 Live traffic updates can be integrated within a fraction of a minute.
-Our time-dependent potentials are up to an order of magnitude faster than the classical Lazy RPHAST-based CH-Potentials and about two orders of magnitude faster than Dijkstra's algorithm.
+Our time-dependent potentials are up to an order of magnitude faster than CH-Potentials and about two orders of magnitude faster than Dijkstra's algorithm.
 % Introduce A* with TDPot
 % Introduce 2 TDPots
 % Show how to apply them to live traffic
@@ -256,9 +256,8 @@ If so, the queue position of $v$ is adjusted accordingly.
 Once $t$ has been settled, the final distance is known and the search can terminate.
 The visited vertices sometimes are called the \emph{search space} of a query.
 
-% heurisitc vs potential
 A*~\cite{hnr-afbhd-68} is a goal-directed extension of Dijkstra's algorithm.
-It applies a \emph{potential} function $\pi_t$ (sometimes also called \emph{heuristic}) which maps vertices to an estimate of the remaining distance to $t$.
+It applies a \emph{potential} function $\pi_t$ which maps vertices to an estimate of the remaining distance to $t$.
 % A*~\cite{hnr-afbhd-68} is an extension of Dijkstra's algorithm where the search is guided towards the target via a potential function $\pi_t$ which maps vertices to an estimate of the remaining distance to $t$.
 This estimate is added to the queue key.
 Thus, vertices closer to the target are visited earlier and the search space becomes smaller.
@@ -874,7 +873,7 @@ Given a travel time function $w$, we denote the respective arrival time function
 With arrival time functions, we can represent path lengths simply as the composition of the arrival time functions of the individual edges.
 Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on a graph $G$ with time-dependent travel times $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's algorithm on the same graph with modified weights $w'$.
 Consider a vertex $u$ with an arrival time of $\tau$.
-In A*, its queue key is $\tau' = \hat{\pi}_t(u, \tau)$.
+In A*, its queue key is $\tau' = \pi_t(u, \tau) + \tau = \hat{\pi}_t(u, \tau)$.
 When relaxing an edge $uv$, we get a queue key of $\hat{\pi}_t(v, \hat{w}(uv, \tau))$ at $v$.
 Thus, we get $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$ where $\hat{\pi}_t(u)^{-1}$ is the inverted arrival time function, i.e.\ a \emph{departure time} function.
 For $\hat{\pi}_t(u)^{-1}$ to be well defined, we need $\tau_1 \neq \tau_2 \implies \hat{\pi}_t(\tau_1) \neq \hat{\pi}_t(\tau_2)$.
@@ -883,7 +882,8 @@ Therefore, for potentials we require the \emph{strong First-In First-Out} proper
 \pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon, v \in V, \epsilon > 0
 \]
 Note that potentials which only adhere to the regular FIFO property likely work just as well in practice.
-It just breaks the well-definedness of the modified weights for a theoretically equivalent run of Dijkstra's algorithm.
+However, in this case, the modified weights for a theoretically equivalent run of Dijkstra's algorithm are not well-defined anymore.
+This breaks the following correctness argument, but likely not the correctness.
 
 Shortest paths for these modified weights are the same as with the original weights.
 Consider the weights of two different $s$-$t$ paths.
