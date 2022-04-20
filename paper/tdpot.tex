@@ -859,7 +859,7 @@ This would actually be not completely wrong.
 Nevertheless, there are good reasons, why our modelling assumptions are completely fine for practical purposes.
 First, the assumption is realistic.
 Live traffic should account for unexpected traffic events.
-In that case, live travel times will very rarely be better predicted travel times.
+In that case, live travel times will very rarely be better than predicted travel times.
 Should live traffic be frequently better than the predicted traffic, than the predicted traffic should be adjusted accordingly.
 Second, the reason to solve such a model to exactness is not that the shortest travel time perfectly matches reality.
 Traffic data is always only an approximation of the reality.
@@ -869,45 +869,45 @@ Further, it allows to definitely attribute ``weird'' routes to either bugs in th
 \section{Correctness Properties of Time-Dependent A* Potentials}\label{sec:appendix:correctness}
 
 In this section, we analyze correctness properties for time-dependent A* potentials.
-For the analysis, it is oftentimes more practical the use arrival time functions instead of travel time functions.
+For the analysis, it is oftentimes more practical to use arrival time functions instead of travel time functions.
 Given a travel time function $w$, we denote the respective arrival time function as $\hat{w}(uv, \tau) := w(uv, \tau) + \tau$.
-With arrival time functions, we can represent path lengths simply as the composition of the edges arrival time functions.
-Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on a graph $G$ with time-dependent travel times $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's on the same graph with modified weights $w'$.
+With arrival time functions, we can represent path lengths simply as the composition of the arrival time functions of the individual edges.
+Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on a graph $G$ with time-dependent travel times $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's algorithm on the same graph with modified weights $w'$.
 Consider a vertex $u$ with an arrival time of $\tau$.
 In A*, its queue key is $\tau' = \hat{\pi}_t(u, \tau)$.
 When relaxing an edge $uv$, we get a queue key of $\hat{\pi}_t(v, \hat{w}(uv, \tau))$ at $v$.
-Thus, by definition we get $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$ where $\hat{\pi}_t(u)^{-1}$ is the inverted arrival time function, i.e.\ a \emph{departure time} function.
+Thus, we get $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$ where $\hat{\pi}_t(u)^{-1}$ is the inverted arrival time function, i.e.\ a \emph{departure time} function.
 For $\hat{\pi}_t(u)^{-1}$ to be well defined, we need $\tau_1 \neq \tau_2 \implies \hat{\pi}_t(\tau_1) \neq \hat{\pi}_t(\tau_2)$.
 Therefore, for potentials we require the \emph{strong First-In First-Out} property:
 \[
-\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon, v \in V, \tau \in T, \epsilon \geq 0
+\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon, v \in V, \epsilon > 0
 \]
-Note that potentials which only adhere to the regular FIFO property in practice likely work just as well.
+Note that potentials which only adhere to the regular FIFO property likely work just as well in practice.
 It just breaks the well-definedness of the modified weights for a theoretically equivalent run of Dijkstra's algorithm.
 
-Shortest paths for these modified weights are the same es with the original weights.
+Shortest paths for these modified weights are the same as with the original weights.
 Consider the weights of two different $s$-$t$ paths.
 The initial potential at $s$ is the same for both paths, all the inner potential evaluations cancel out and the potentials at $s$ and the final potential evaluation at $t$ cannot change the order due to the FIFO property.
 
-We can follow that when these modified weights do not have any negative travel times, then Dijkstra and thus A* will obtain correct result. % running time
+We can infer that if these modified weights do not have any negative travel times, then Dijkstra and thus A* will obtain correct results. % running time
 This leads to the \emph{feasibility} property for time-dependent potentials:
 \[
 \hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau'))) \geq \tau'
 \]
-To simplify correctness proofs for potentials, we reform this to a simpler equivalent property:
+To simplify correctness proofs for potentials, we reformulate this to a simpler equivalent property:
 \begin{align*}
 \hat{\pi}_t(v, \hat{w}(uv, \tau)) & \geq \hat{\pi}_t(u, \tau) \\
 \pi_t(v, w(uv, \tau) + \tau) + w(uv, \tau) + \tau & \geq \pi_t(u, \tau) + \tau \\
 \pi_t(v, w(uv, \tau) + \tau) + w(uv, \tau) - \pi_t(u, \tau) & \geq 0
 \end{align*}
-This formulation also shows that the time-dependent feasibility is a generalization to the classical feasibility property.
+This formulation also shows that the time-dependent feasibility is a generalization of the classical feasibility property.
 
 The third property is the \emph{lower bound} property:
 \[
-\pi_t(v, \tau) \leq \dist(v,t,\tau)
+\pi_t(v, \tau) \leq \dist_w(v,t,\tau)
 \]
-With a potential fulfilling this property, A* will have found the shortest path once the target vertex was settled, even if the potential is not feasible.
-This is because every shortest path vertex must have a queue key smaller than the target and by induction all these vertexes must have been settled before the target.
+With a potential fulfilling this property, A* is guaranteed to have found the shortest path once the target vertex is settled, even if the potential is not feasible.
+This is because every vertex on the shortest path must have a queue key smaller than the target and by induction all these vertexes must have been settled before the target.
 Also, even with negative travel times, negative cycles are not possible.
 Consider a cycle $C$ starting and ending at vertex $v$.
 The length of the cycle with the modified weights is $w'(C, \tau') = \hat{\pi}_t(v, \hat(w)(C, \hat{\pi}_t(u)^{-1}(\tau')))$ because all inner potential functions cancel out.
@@ -915,9 +915,9 @@ As $\hat{\pi}_t(v)$ has to adhere to the FIFO property, the length of $C$ cannot
 Thus, A* with lower bound potentials will obtain correct results.
 However, the running time may be exponential in the graph size.
 
-Crucially, to guarantee correctness it is not necessary to adhere to these properties for all $\tau$.
+Crucially, to guarantee correctness it is not necessary to adhere to these properties for all points in time $\tau$.
 Assume we are running A* to answer a query from $s$ to $t$ with departure $\tdep$.
-Clearly, A* will never invoke the potential of vertex $v$ with $\tau < \dist(s,v,\tdep)$.
+Clearly, A* will never invoke the potential $\pi_t(v, \tau)$ of a vertex $v$ with $\tau < \dist(s,v,\tdep)$.
 Therefore, it is sufficient to guarantee the strong FIFO property at vertex $v$ and the feasibility property for edge $vw$ for $\tau \geq \dist(s,v,\tdep)$.
 For the lower bound property it even suffices to guarantee it only at exactly $\tau = \dist(s,v,\tdep)$.
 
