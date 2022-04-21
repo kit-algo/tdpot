@@ -356,8 +356,8 @@ Therefore, we avoid costly operations on functions and work with scalar values a
 \subsection{Multi-Metric Potentials}
 
 Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival time at the target.
-Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l_{[\tau', \tau'']}(e) = \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
-Clearly, $\dist_{l_{[\tau', \tau'']}}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
+Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l[\tau', \tau''](e) := \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
+Clearly, $\dist_{l[\tau', \tau'']}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
 If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too large, the estimates will be significantly tighter than global lower bound distances.
 The \emph{Multi-Metric Potentials} approach is based on this observation.
 Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions valid for different time intervals.
@@ -372,17 +372,18 @@ we cover the time between 6:00 and 22:00 with intervals of length one, two, four
 and one interval covering the entire day.
 We do not maintain any additional intervals between 22:00 and 6:00 as most edges will have their freeflow travel time during this time.
 Thus, the lower bound weights in these intervals would be equal to the full-day lower bounds.
-During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l_{[\tau_i', \tau_i'']}$ and run the CCH customization algorithm to obtain $l_{[\tau_i', \tau_i'']}^+$.
+During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l[\tau_i', \tau_i'']$ and run the CCH customization algorithm to obtain $l[\tau_i', \tau_i'']^+$.
 This can be trivially parallelized.
 Also, the customization can be parallelized internally.
 For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19,ghuw-fbndocch-19}.
 
-During the update phase, we compute an additional lower bound weight function for $[\tnow, \tnow + 59\,\operatorname{minutes}]$ which incorporates the current live traffic situation $\comb$ and run the basic customization for it.
+During the update phase, we compute an additional lower bound weight function starting at $\tnow$ with duration $\Delta$ which incorporates the current live traffic situation $\comb$ and run the basic customization for it.
+We use $\Delta =$ 59 minutes to reasonably cover the live traffic but keep the live interval shorter than any other interval.
 Further, we extract an upper bound weight function $\comb_{\max}$ which is valid for the entire day with respect to both the predicted and the live traffic and perform the CCH basic customization to obtain $\comb^+_{\max}$.
 
 The query starts with a classical CCH query on the customized upper bound $\comb^+_{\max}$ to obtain a pessimistic estimate of $\tmax$.
 We then select the smallest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
-Running Lazy RPHAST on $G^*_l$ with the customized weight function $l_{[\tau_i', \tau_i'']}^+$ of this interval yields the desired potential function.
+Running Lazy RPHAST on $G^*_l$ with the customized weight function $l[\tau_i', \tau_i'']^+$ yields the desired potential function.
 See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 
 \subparagraph{Correctness.}
