@@ -359,7 +359,7 @@ Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optima
 Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l[\tau', \tau''](e) := \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
 Clearly, $\dist_{l[\tau', \tau'']}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
 If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too large, the estimates will be significantly tighter than global lower bound distances.
-The \emph{Multi-Metric Potentials} approach is based on this observation.
+The \emph{Multi-Metric Potentials} (MMP) approach is based on this observation.
 Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions valid for different time intervals.
 At query time, we then select an appropriate weight function.
 Efficiently computing distances with respect to the selected weight function is done with Lazy RPHAST.
@@ -387,13 +387,14 @@ Running Lazy RPHAST on $G^*_l$ with the customized weight function $l[\tau_i', \
 See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 
 \subparagraph{Correctness.}
-For any given single query, multi-metric potentials are actually time-independent and return the exact shortest distances with respect to a valid lower bound weight function.
+For any given single query, the estimates obtained by MMP are actually time-independent.
+They return the exact shortest distances with respect to a lower bound weight function valid for the query.
 Constant potentials trivially adhere to the strong FIFO property.
-Also, as shown in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, shortest distances for a lower bound weight function are feasible potentials.
+Also, shortest distances for a lower bound weight function are feasible potentials~\cite{strasser_et_al:LIPIcs.SEA.2021.6}.
 
-\subsection{Interval-Minimum Potential}
+\subsection{Interval-Minimum Potentials}
 
-The \emph{Interval-Minimum Potential} is a time-dependent adaptation of the Lazy RPHAST algorithm.
+\emph{Interval-Minimum Potentials} (IMP) is a time-dependent adaptation of the Lazy RPHAST algorithm.
 Where Lazy RPHAST has a single scalar (lower bound) weight for each edge, the Interval-Minimum Potential has a lower bound function.
 This allows for tighter estimates but introduces new challenges.
 First, we need an augmented graph with sufficiently accurate time-dependent lower bounds.
@@ -402,9 +403,10 @@ Second, storing the shortcut travel time functions $w^+$ can be very expensive i
 Also, the representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
 We therefore resort to a different representation and store functions as piecewise constant values in buckets of equal duration.
 In our implementation, we split the day into 96 buckets of length 15 minutes.
-Third, evaluating these functions requires a time of evaluation.
+Third, evaluating these functions requires a time argument.
 While $\pi_t(v, \tau)$ includes the time argument $\tau$ for the time at $v$, Lazy RPHAST also needs a time for every recursive invocation.
-We therefore apply Lazy RPHAST a second time on global upper and lower bound weight functions $\comb_{\max}^+$ and $\pred_{\min}^+$ to obtain arrival intervals for arbitrary vertices.
+% TODO der satz will zu viel
+We apply Lazy RPHAST a second time on global upper and lower bound weight functions $\comb_{\max}^+$ and $\pred_{\min}^+$ to obtain arrival intervals for arbitrary vertices.
 
 \subparagraph{Phase Details.}
 The first preprocessing step is the CCH preprocessing.
@@ -413,27 +415,28 @@ For this, we use CATCHUp~\cite{swz-sfert-21}, which is a time-dependent adaptati
 % TCH also possible
 The CATCHUp customization yields for each edge in $uv \in E^+$ approximated \emph{time-dependent} lower bound functions $\underline{b^+}(uv)$.
 We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
-$\pcfn(uv, \tau) := \min_{\lfloor \frac{\tau}{\bucketlen} \rfloor \bucketlen \leq \tau' < (\lfloor \frac{\tau}{\bucketlen} \rfloor + 1) \bucketlen} \underline{b^+}(uv, \tau')$
+$\pcfn(uv, \tau) := \min \left\{ \underline{b^+}(uv, \tau') \mid \bucketlen  \lfloor \frac{\tau}{\bucketlen} \rfloor \leq \tau' < \bucketlen (\lfloor \frac{\tau}{\bucketlen} \rfloor + 1) \right\}$
 where $\bucketlen$ is the length of each constant segment, in our case 15 minutes.
 This enables a compact representation because functions can be represented with a fixed number of values per edge.
 We additionally derive a scalar lower bound $b^+_{\min}$.
-Note that $b^+_{\min}$ is typically much tighter than bounds obtained by a time-independent customization on lower bounds of the input functions, i.e.\ $w^+_{\min}$.
+Note that $b^+_{\min}$ is typically tighter than bounds obtained by a time-independent customization on lower bounds of the input functions, i.e.\ $w^+_{\min}$.
 
 For the update phase we extract an upper bound weight function $\comb_{\max}$ for the entire day, which is valid with respect to both the predicted and the live traffic.
-Then we run the CCH customization algorithm to obtain $\comb^+_{\max}$.
+We run the CCH customization to obtain $\comb^+_{\max}$.
 
 % make sure its clear that the lazy rphast remains time-independent
 The query consists of two instantiations of the Lazy RPHAST algorithm.
-The first one uses the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$ and computes arrival intervals at arbitrary vertices.
+The first one uses the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$ and computes an interval of possible arrival times at arbitrary vertices when departing from $s$ at $\tdep$.
 Since arrival intervals are distances from the source vertex, we have to apply Lazy RPHAST in reverse direction, i.e.\ first, we run Dijkstra's algorithm from $s$ on $\gchu$ and then we apply the recursive distance-memoizing DFS on $\gchd$ for any vertex for which we want to obtain an arrival interval.
+We denote this instance as AILR for \emph{Arrival Interval Lazy RPAHST}.
 With these arrival intervals, we can now compute lower bounds to the target with the second Lazy RPHAST instantiation, which uses the time-dependent lower bounds $\pcfn$.
 The first step is to run Dijkstra's algorithm from $t$ on $\gchd$.
-To relax an edge $uv \in \rechd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using Lazy RPHAST on the bounds.
-This allows us to determine a tight lower bound for $vu$ at the relevant time and we can then check if we can improve the lower bound from $v$ to $t$, i.e.\
-$\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(vu, \tau))$.
+To relax an edge $uv \in \rechd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using AILR.
+This allows us to determine for $vu$ at the relevant time a tight lower bound $d := \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(vu, \tau)$.
+We can then check if we can improve the lower bound from $v$ to $t$, i.e.\ $\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + d)$.
 Having established preliminary backward distances for all vertices in the CH search space of $t$, we can now compute estimates with the recursive distance-memoizing DFS.
 To obtain a distance estimate for vertex $u$, we first recursively compute distance estimates $\mathtt{D}^{\downarrow}[v]$ for all upward neighbors $v$ where $uv \in \echu$.
-Then, we use Lazy RPHAST on the bounds to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $u$.
+Then, we use AILR to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $u$.
 Finally, we relax the upward edges $uv$ set $\mathtt{D}^{\downarrow}[u] \leftarrow \min(\mathtt{D}^{\downarrow}[u], \mathtt{D}^{\downarrow}[v] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(uv, \tau))$.
 This yields the final estimate for $u$.
 
@@ -445,10 +448,10 @@ Thus, having their weights for the same bucket close to each other increases cac
 See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 
 \subparagraph{Correctness.}
-The Interval-Minimum Potential is not feasible because we use piecewise constant functions for the shortcut travel time lower bounds.
-Still, it does satisfy the strong FIFO property because for any given single query, the estimates are constant.
-Moreover, the estimates are lower bounds on the distances.
+Estimates obtained by IMP are lower bounds of the actual time-dependent shortest distances.
 This directly follows from the correctness of the CATCHUp preprocessing and the Lazy RPHAST algorithm.
+Also, they do satisfy the strong FIFO property because for any given single query, the estimates are constant.
+However, they are not feasible due to the piecewise constant approximation schema.
 
 \subsection{Compression}\label{sec:compression}
 
@@ -540,18 +543,18 @@ We evaluate our algorithms by sequentially solving batches of 100\,k shortest pa
 First, there are \emph{random} queries where source and target are drawn from all vertices uniformly at random.
 These are mostly long-range queries.
 Second are \emph{1h} queries where we draw a source vertex uniformly at random, run Dijkstra's algorithm from it and pick the first node with a distance greater than one hour as the target.
-Third, we generate queries following the established Dijkstra rank methodology~\cite{ss-hhhes-05} for a thorough investigation of the performance with respect to query distance.
+Third, we generate queries following the Dijkstra rank methodology~\cite{ss-hhhes-05} to investigate the performance with respect to query distance.
 For these \emph{rank} queries, we pick a source uniformly at random and run Dijkstra's algorithm from it.
 We use every $2^{i}$-th settled vertex as the target for a query of Dijkstra rank $2^i$.
 For queries with only predicted traffic, we pick $\tdep$ uniformly at random.
 When using live traffic, we set $\tdep = \tnow$.
 To evaluate the performance of the preprocessing and update phases, we run them 10 and 100 times, respectively.
 Preprocessing and update phases utilize all cores using 16 threads.
-
-\subparagraph{Algorithms.}
+%
+% \subparagraph{Algorithms.}
 % In our experiments, we run A* with different potentials.
-We denote Multi-Metric Potentials by MMP and Interval-Minimum Potential by IMP.
-Additionally, we compare against time-independent CCH-Potentials which is the only other speedup technique we are aware of that supports our problem model.
+% We denote Multi-Metric Potentials by MMP and Interval-Minimum Potential by IMP.
+We compare our time-dependent potentials MMP and IMP against time-independent CCH-Potentials which is the only other speedup technique we are aware of that supports our problem model.
 Dijkstra's algorithm without any acceleration is our baseline.
 
 \begin{table}
