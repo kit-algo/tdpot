@@ -421,8 +421,7 @@ This enables a compact representation because functions can be represented with 
 We additionally derive a scalar lower bound $b^+_{\min}$.
 Note that $b^+_{\min}$ is typically tighter than bounds obtained by a time-independent customization on lower bounds of the input functions, i.e.\ $w^+_{\min}$.
 
-For the update phase we extract an upper bound weight function $\comb_{\max}$ for the entire day, which is valid with respect to both the predicted and the live traffic.
-We run the CCH customization to obtain $\comb^+_{\max}$.
+In the update phase, we extract a combined traffic upper bound weight function $\comb_{\max}$ for the entire day, and run the CCH customization to obtain $\comb^+_{\max}$.
 
 % make sure its clear that the lazy rphast remains time-independent
 The query consists of two instantiations of the Lazy RPHAST algorithm.
@@ -455,12 +454,16 @@ However, they are not feasible due to the piecewise constant approximation schem
 
 \subsection{Compression}\label{sec:compression}
 
-Both of our time-dependent potentials have to store a significant number of weight functions.
+Both of our time-dependent potentials use many weight functions.
 This can lead to problematic memory consumption.
-However, since we only need lower bounds, we can merge lower bound weight functions into a combined weight function with the respective minimum weights.
-Thus, by trading some tightness, we can reduce memory consumption.
-Both potentials can handle merged lower bound functions with a layer of indirection which maps each bucket or interval to a weight function ID.
-When merging two weight functions, we let both buckets/intervals point to the same weight function ID.
+However, since we only need lower bounds, we can merge weight functions.
+Consider two MMP intervals with weight functions $l_1$ and $l_2$.
+A combined function $l_{1 \cup 2}(uv) = \min(l_1(uv), l_2(uv))$ is valid for both intervals, albeit less tight.
+We can merge IMP buckets analogously.
+Thus, we can reduce memory consumption by trading tightness.
+Both potentials can handle merged lower bound functions with a layer of indirection:
+Buckets and intervals are mapped to a weight function ID.
+Weight functions to which multiple buckets/intervals map have for each edge the minimum weight of all included functions.
 
 We now discuss an efficient and well-parallelizable algorithm to iteratively merge weight functions until only $k$ functions remain.
 In each step, we merge the pair of weight functions with the minimal sum of squared differences over all edge weights.
@@ -621,21 +624,20 @@ All other running times are indicated as outliers.
 \end{figure}
 
 Figure~\ref{fig:ranks} depicts the performance by query distance.
-For short-range queries, IMP is slower than the other approaches because the potential is expensive to evaluate, but it scales much better to long-range queries because of better estimates.
-Also the running times are much more stable and have a smaller variance.
-Even for rank $2^24$, most queries can be answered within a few tenths of milliseconds.
+For short-range queries, IMP is slower than the other approaches because the potential is expensive to evaluate, but it scales much better to long-range queries because of its estimates are tighter.
+Also, the variance in running times is significantly smaller.
+Even for rank $2^{24}$, most queries can be answered within a few tenths of milliseconds.
 Nevertheless, MMP is actually faster on most ranks.
-Only at rank $2^24$, MMP running times become as slow as the CCH-Potentials baseline.
-A strong jump in MMP running times can be observed from rank $2^23$ to $2^24$.
-This is because the mean query distance jumps from five to six hours on rank $2^23$ to over eight hours on rank $2^24$, which is longer than the longest covered interval.
-Thus, on rank $2^24$, MMP will fall back to classical CCH-Potentials on many queries.
+Only at rank $2^{24}$, MMP running times become as slow as the CCH-Potentials baseline.
+A strong jump in MMP running times can be observed from rank $2^{23}$ to $2^{24}$.
+This is because the mean query distance jumps from five to six hours on rank $2^{23}$ to over eight hours on rank $2^{24}$, which is longer than the longest covered interval.
+Thus, on rank $2^{24}$, MMP fall back to classical CCH-Potentials on many queries.
 We also observe a few strong outliers.
 This happens because of blocked streets in the live traffic data.
 When the target vertex of a query is only reachable through a blocked road segment, A* will traverse large parts of the networks until the blocked road opens up.
 This affects all three potentials in the same way and demonstrates an inherent weakness of A*-based approaches: the performance always depends on the quality of the estimates.
-However, to the best of our knowledge, our approach is the only one to enable live-traffic updates within less than minute.
-Time-dependent customization algorithms on realistic instances are just too expensive for frequent rerunning.
-Therefore, by significantly improving query times over CCH-Potentials, our approach is the first to achieve interactive query times across all distances in a setting with combined live and predicted traffic. % TODO reword
+However, the time-dependent preprocessing algorithms of purely hierarchical approaches are on realistic instances just too expensive for frequent rerunning.
+This makes our approach the first to enable interactive query times across all distances in a setting with combined live and predicted traffic.
 
 \begin{figure}[!t]
 \centering
@@ -663,10 +665,11 @@ See Appendix~\ref{sec:appendix:parallelization} for further details on the effec
 \section{Conclusion}
 
 In this paper, we proposed time-dependent A* potentials for efficient and exact routing in time-dependent road networks with both predicted and live traffic.
-We presented two realizations of time-dependent potentials with different trade-offs and showed how to apply them in this setting.
+We presented two realizations of time-dependent potentials with different trade-offs.
 Both allow fast live traffic updates within a fraction of a minute.
-We achieve query times two orders of magnitude faster than Dijkstra's algorithm and up to an order of magnitude faster than state-of-the-art time-independent potentials.
-To the best of our knowledge, this makes our approach the first to achieve almost real-time query performance while allowing fast updates in this setting.
+IMP achieve query times two orders of magnitude faster than Dijkstra's algorithm and up to an order of magnitude faster than state-of-the-art time-independent potentials.
+To the best of our knowledge, this makes our approach the first to achieve interactive query performance while allowing fast updates in this setting.
+For future work, we would like to apply our time-dependent potentials to other extended scenarios in time-dependent routing for example to include turn costs.
 
 % \section{Typesetting instructions -- Summary}
 % \label{sec:typesetting-summary}
