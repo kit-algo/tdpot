@@ -291,9 +291,9 @@ namespace "exp" do
 
   task compression_par: ["#{exp_dir}/compression_par", ptv_eur] do
     Dir.chdir "code/rust_road_router" do
-      graphs.each do |graph, _|
+      10.times do
         [1, 2, 4, 8, 16].each do |k|
-          sh "RAYON_NUM_THREADS=#{k} cargo run --release --bin interval_min_reduction -- #{graph} 16 customized_corridor_mins reduced_corridor_mins > #{exp_dir}/compression_par/$(date --iso-8601=seconds).json"
+          sh "RAYON_NUM_THREADS=#{k} cargo run --release --bin interval_min_reduction -- #{ptv_eur} 16 customized_corridor_mins reduced_corridor_mins > #{exp_dir}/compression_par/$(date --iso-8601=seconds).json"
           sh "rm -r #{graph}interval_min_pot"
           sh "rm -r #{graph}reduced_corridor_mins"
         end
