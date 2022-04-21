@@ -251,7 +251,7 @@ We discuss this model further in Appendix~\ref{sec:appendix:model}.
 
 % distance vs arrival times
 \emph{Dijkstra's algorithm}~\cite{d-ntpcg-59} computes $\dist_w(s,t,\tdep)$ by exploring vertices in increasing order of distance from $s$ until $t$ is reached.
-The distances from $s$ of each vertex $u$ are tracked in an array $\mathtt{D}[u]$, initially set to $\infty$ for all vertices.
+The distances from $s$ to each vertex $u$ are tracked in an array $\mathtt{D}[u]$, initially set to $\infty$ for all vertices.
 A priority queue of vertices ordered by their distance from $s$ is maintained.
 The priority queue is initialized with $s$ and $\mathtt{D}[s]$ set to $\tdep$.
 In each iteration, the next closest vertex $u$ is extracted from the queue and \emph{settled}.
@@ -334,7 +334,7 @@ The customization can be parallelized efficiently~\cite{bsw-rttau-19} and takes 
 \end{algorithm2e}
 
 \emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a (C)CH query variant to incrementally compute distances from many sources toward a common target.
-The first step is a run Dijkstra's algorithm on $\gchd$ from $t$, similarly to a regular CH query.
+The first step is to run Dijkstra's algorithm on $\gchd$ from $t$, similarly to a regular CH query.
 The second Dijkstra search is replaced with a recursive depth-first search (DFS) which memoizes distances.
 Algorithm~\ref{algo:lazy_rphast} depicts this routine which will be called for all sources.
 If the distance of a vertex $u$ was previously computed, the routine terminates immediately and returns the memoized value $\mathtt{D}[u]$.
@@ -370,8 +370,8 @@ Now let $I$ be a set of time intervals.
 In our implementation,
 we cover the time between 6:00 and 22:00 with intervals of length one, two, four and eight hours, starting every 30 minutes,
 and one interval covering the entire day.
-We do not maintain any additional intervals between 22:00 and 6:00 as most edges will have their freeflow travel time during this time.
-Thus, the lower bound weights in these intervals would be equal to the full-day lower bounds.
+We do not maintain any additional intervals between 22:00 and 6:00 as most edge weights correspond to their respective freeflow travel time during this period.
+Thus, the lower bound weights would be equal to the full-day lower bounds.
 During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l[\tau_i', \tau_i'']$ and run the CCH customization algorithm to obtain $l[\tau_i', \tau_i'']^+$.
 This can be trivially parallelized.
 Also, the customization can be parallelized internally.
@@ -395,13 +395,13 @@ Also, shortest distances for a lower bound weight function are feasible potentia
 \subsection{Interval-Minimum Potentials}
 
 \emph{Interval-Minimum Potentials} (IMP) is a time-dependent adaptation of the Lazy RPHAST algorithm.
-Where Lazy RPHAST has a single scalar (lower bound) weight for each edge, the Interval-Minimum Potential has a lower bound function.
+While Lazy RPHAST has a single scalar weight for each edge, the Interval-Minimum Potential uses a time-dependent function.
 This allows for tighter estimates but introduces new challenges.
 First, we need an augmented graph with sufficiently accurate time-dependent lower bounds.
 We utilize the existing CATCHUp customization~\cite{swz-sfert-21} because it is also based on CCH.
 Second, storing the shortcut travel time functions $w^+$ can be very expensive in terms of memory consumption.
 Also, the representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
-We therefore resort to a different representation and store functions as piecewise constant values in buckets of equal duration.
+Therefore, we resort to a different representation and store functions as piecewise constant values in buckets of equal duration.
 In our implementation, we split the day into 96 buckets of length 15 minutes.
 Third, evaluating these functions requires a time argument.
 While $\pi_t(v, \tau)$ includes the time argument $\tau$ for the time at $v$, Lazy RPHAST also needs a time for every recursive invocation.
@@ -411,7 +411,7 @@ We apply Lazy RPHAST a second time on global upper and lower bound weight functi
 \subparagraph{Phase Details.}
 The first preprocessing step is the CCH preprocessing.
 For the second step, we need to obtain time-dependent travel times for the augmented graph $G^+$ based on the predicted traffic weights $p$.
-For this, we use CATCHUp~\cite{swz-sfert-21}, which is a time-dependent adaptation of CCH.
+For this, we utilize CATCHUp~\cite{swz-sfert-21}, a time-dependent adaptation of CCH.
 % TCH also possible
 The CATCHUp customization yields for each edge in $uv \in E^+$ approximated \emph{time-dependent} lower bound functions $\underline{b^+}(uv)$.
 We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
@@ -432,7 +432,7 @@ With these arrival intervals, we can now compute lower bounds to the target with
 The first step is to run Dijkstra's algorithm from $t$ on $\gchd$.
 To relax an edge $uv \in \rechd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using AILR.
 This allows us to determine for $vu$ at the relevant time a tight lower bound $d := \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(vu, \tau)$.
-We can then check if we can improve the lower bound from $v$ to $t$, i.e.\ $\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + d)$.
+Then, we check if we can improve the lower bound from $v$ to $t$, i.e.\ $\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + d)$.
 Having established preliminary backward distances for all vertices in the CH search space of $t$, we can now compute estimates with the recursive distance-memoizing DFS.
 To obtain a distance estimate for vertex $u$, we first recursively compute distance estimates $\mathtt{D}^{\downarrow}[v]$ for all upward neighbors $v$ where $uv \in \echu$.
 Then, we use AILR to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $u$.
@@ -441,7 +441,7 @@ This yields the final estimate for $u$.
 
 Choosing the right memory layout for the bucket weights is crucial for the performance.
 We store all edge weights of each bucket consecutively.
-Typically, only a few buckets per edge are relevant, because the arrival intervals are relatively small.
+Typically, only a few buckets per edge are relevant because the arrival intervals are relatively small.
 Also, all outgoing edges of each vertex are evaluated consecutively.
 Thus, having their weights for the same bucket close to each other increases cache hits.
 See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
@@ -488,7 +488,7 @@ Sadly, we cannot provide access to these datasets due to non-disclosure agreemen
 We are not aware of any publicly available real-world traffic feeds or predictions.
 However, as these datasets are the same ones used in~\cite{swz-sfert-21,strasser_et_al:LIPIcs.SEA.2021.6}, at least some comparability is given.
 %
-Our first network, PTV Europe, was provide by PTV\footnote{\url{https://ptvgroup.com}} in 2020 and is based on TomTom\footnote{\url{https://www.tomtom.com}} routing data covering western Europe.
+Our first network, PTV Europe, has been provided by PTV\footnote{\url{https://ptvgroup.com}} in 2020 and is based on TomTom\footnote{\url{https://www.tomtom.com}} routing data covering western Europe.
 It has 28.5\,M vertices and 61\,M edges.
 76\% of the edges have a non-constant travel time.
 The data includes a traffic incident snapshot from 2020/10/28 07:47 with live speeds and estimated incident durations for 215\,k vertex pairs.
@@ -571,8 +571,8 @@ Additionally, we report preprocessing and update times and the memory consumptio
 \end{table}
 
 \subparagraph{Experiments.} In Table~\ref{tab:pot_perf}, we report key performance results for our time-dependent potentials on random queries.
-We observe that IMP is the fastest approach by a significant margin, up to almost an order of magnitude faster than time-independent CCH-Potentials and at roughly two orders of magnitude or more faster than Dijkstra's algorithm.
-The search space reduction is even greater, but this does not fully translate to running times due to the higher overhead of IMP.
+We observe that IMP is the fastest approach by a significant margin, up to an order of magnitude faster than time-independent CCH-Potentials and roughly two orders of magnitude faster than Dijkstra's algorithm.
+The search space reduction is even greater, but this does not fully translate to running times due to the higher evaluation overhead of IMP.
 With only predicted traffic, IMP is only two to three times slower than CATCHUp~\cite{swz-sfert-21}.
 This shows that using A* to gain algorithmic flexibility comes at a price but the overhead compared to purely hierarchical techniques is manageable.
 In contrast, MMP is only slightly faster than CCH-Potentials.
@@ -651,7 +651,7 @@ Right: Boxplot of the per-query relative slowdown over the running time of the r
 Finally, Figure~\ref{fig:compression} showcases the effects of reducing the number of weight functions.
 MMP appears to be very robust against compression.
 We can reduce the number of weight functions to 16 (a memory usage reduction of about a factor of 6) before the slowdowns become noticeable in the mean running time.
-However, MMP also only achieves relatively small speed-ups compared to CCH-Potentials, i.e.\ rarely more than a factor of three.
+However, MMP only achieves relatively small speed-ups compared to CCH-Potentials, i.e.\ rarely more than a factor of three.
 Therefore, its robustness is not particularly surprising.
 IMP, which achieves stronger speedups, is less robust against compression.
 Nevertheless, we can reduce the memory consumption by a factor of about three to 32 functions and still achieve very decent query times.
@@ -845,7 +845,7 @@ For future work, we would like to apply our time-dependent potentials to other e
 \draw[very thick,blue] (3.25,2.75) -- (4,2);
 \end{tikzpicture}
 \caption{
-Example of a combined travel time function $\comb(e, \tau) = \max(\pred(e, \tau), \min(\live(e), \pred(e, \tend(e)) + \tend(e) - \tau))$ with both predicted and live traffic information.
+Combined travel time function $\comb(e, \tau) = \max(\pred(e, \tau), \min(\live(e), \pred(e, \tend(e)) + \tend(e) - \tau))$ with both predicted and live traffic information.
 The predicted traffic $\pred(e)$ is indicated in black.
 The live travel time $\live(e)$ with expected end $\tend(e)$ is depicted in red.
 The switch back to the predicted function is colored in blue.
