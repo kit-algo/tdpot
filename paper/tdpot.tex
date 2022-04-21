@@ -114,12 +114,12 @@ For navigation applications, both current (i.e., live) traffic events and predic
 While preprocessing-based speedup techniques have been employed successfully to both settings individually, a combined model poses significant challenges.
 Supporting predicted traffic typically requires expensive preprocessing while live traffic requires fast updates for regular adjustments.
 We propose an A*-based solution to this problem.
-To enable fast queries, we generalize A* potentials to time dependency, i.e.\ the estimate of the distance from a vertex to the target also depends on the time of day when the vertex is visited.
-We then present two realizations of time-dependent potentials.
+By generalizing A* potentials to time dependency, i.e.\ the estimate of the distance from a vertex to the target also depends on the time of day when the vertex is visited, we achieve significantly faster query times than previously possible.
+% We then present two realizations of time-dependent potentials.
 % propose td pots for better estimates and better usage of preprocessing to achieve faster TD queries than previously possible with A*
 % becasue pots need not be exact higher flexibility to support live traffic
 Our evaluation shows that our approach enables interactive query times on continental-sized road networks while allowing live traffic updates within a fraction of a minute.
-We achieve a speedup of at least two orders of magnitude over Dijkstra's algorithm and up to one order of magnitude over competing state-of-the-art approaches.
+We achieve a speedup of at least two orders of magnitude over Dijkstra's algorithm and up to one order of magnitude over state-of-the-art time-independent A* potentials.
 \end{abstract}
 
 \section{Introduction}
