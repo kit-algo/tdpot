@@ -985,6 +985,23 @@ Again we use the perfect customization to obtain $\comb^*_{\max}$ during the upd
 
 \section{Parallelization of Compression}\label{sec:appendix:parallelization}
 
+\begin{figure}
+\centering
+\includegraphics[width=\linewidth]{fig/parallelization.pdf}
+\caption{
+Left: Mean running times of compression of IMP buckets for PTV Europe from 96 to 16. The black lines (barely visible) indicates the standard deviation.
+Right: Parallel efficiency, i.e.\ speedup over single threaded running time divided by number of threads.
+}\label{fig:comp_par}
+\end{figure}
+
+Figure~\ref{fig:comp_par} depicts running times and parallel efficiency of the compression algorithm with varying number of threads on PTV Europe when merging 96 buckets until only 16 buckets remain.
+Without parallelization, the compression takes 6 to 7 minutes.
+This is almost as long as the full MMP preprocessing.
+Luckily, with 16 threads the running time can be reduced to 50 seconds which is a speedup of about 8.
+With fewer threads, the efficiency is even higher.
+Even though the parallelization does not scale perfectly, running times are still reduced significantly.
+As a result, compression times only make up a small fraction of the total preprocessing times.
+
 % \section{Styles of lists, enumerations, and descriptions}\label{sec:itemStyles}
 
 % List of different predefined enumeration styles:

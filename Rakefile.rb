@@ -39,6 +39,10 @@ namespace "fig" do
   ] + ["eval/compression.py", "paper/fig"] do
     sh "eval/compression.py"
   end
+
+  file "paper/fig/parallelization.pdf" => FileList["#{exp_dir}/compression_par/*.json"] + ["eval/parallelization.py", "paper/fig"] do
+    sh "eval/parallelization.py"
+  end
 end
 
 namespace "table" do
