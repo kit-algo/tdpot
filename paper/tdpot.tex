@@ -85,7 +85,8 @@
 \newcommand*{\gchu}{G^{\uparrow}}
 \newcommand*{\gchd}{\overleftarrow{G^{\downarrow}}}
 \newcommand*{\echu}{E^{\uparrow}}
-\newcommand*{\echd}{\overleftarrow{E^{\downarrow}}}
+\newcommand*{\rechd}{\overleftarrow{E^{\downarrow}}}
+\newcommand*{\echd}{E^{\downarrow}}
 
 \newcommand*{\pcfn}{\underline{b'^+}}
 \newcommand*{\bucketlen}{x}
@@ -269,6 +270,7 @@ In this work, we use a time-dependent generalization $\pi_t : V \to (T \to \math
 This allows us to obtain tighter estimates and enables faster queries.
 % Analogue to classical potentials, t
 There are three important properties of time-dependent potentials to consider for the correctness of A*:
+
 \begin{itemize}
   \item Strong First-In First-Out (FIFO): $\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon$ for $v \in V$, $\tau > \dist_w(s,u,\tdep)$ and $\epsilon > 0$.
         This ensures that queue keys increase monotonically with the distance from $s$.
@@ -279,12 +281,13 @@ There are three important properties of time-dependent potentials to consider fo
         % When $\pi_t(t, \tau) = 0$, feasibility also implies the lower bound property.
         However, feasibility is not strictly necessary.
   \item Lower bound: $\pi_t(v, \tau) \leq \dist_w(v,t,\tau)$ for every vertex $v \in V$ and time $\tau = \dist_w(s,v,\tdep)$.
-        A* with a lower bound potential will have found the correct distance once the target vertex was settled.
-        This also suffices for correctness.
+        This ensures that the search has found the correct distance once the target vertex is settled.
+        This is also sufficient for correctness.
         However, without feasibility, A* may settle vertices multiple times.
         In theory, this can lead to an exponential running time.
 \end{itemize}
-In Appendix~\ref{sec:appendix:correctness} we discuss these correctness properties in detail and prove that queries are answered correctly with these properties.
+
+In Appendix~\ref{sec:appendix:correctness} we discuss these properties in detail and prove the correctness.
 Note that these properties only need to hold for specific times $\tau$, not all possible times of the day.
 Our proposed potentials heavily rely on this and only compute data for the specific times necessary to answer a query correctly.
 
@@ -299,7 +302,7 @@ Then, an \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut 
 Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i \prec u$ and $x_i \prec v$.
 Therefore, $w^+(uv)$ is assigned the length of the shortest such path.
 We sometimes split $G^+$ into an upward graph $\gchu = (V, \echu)$ which contains only edges $uv$ where $v \succ u$ and a downward graph $G^{\downarrow} = (V, E^{\downarrow})$ defined analogously.
-The augmented graph has the property that between any two vertices $s$ and $t$, there exists a path $P$ with $w^+(P) = \dist_w(s,t)$ and $v \succeq \min(s, t) \forall v \in P$.
+The augmented graph has the property that between any two vertices $s$ and $t$, there exists an \emph{up-down-path} $P$ with $w^+(P) = \dist_w(s,t)$ which uses first only edges from $\echu$ and then only edges from $\echd$.
 Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
 Because only few vertices are reachable in this \emph{CH search space}, queries are very fast, i.e.\ about a tenth of a millisecond on continental-sized networks.
 
@@ -348,7 +351,7 @@ In this section, we propose two time-dependent A* potentials which are both exte
 Lazy RPHAST/CH-Potentials is already quite an efficient potential and obtains exact distances with respect to scalar lower bound weights, i.e.\ the tightest estimates which are possible with a time-independent potential definition.
 To outperform CH-Potentials, we must not only obtain significantly tighter estimates but also be careful to not make the potential evaluation too expensive.
 Therefore, we avoid costly operations on functions and work with scalar values as much as possible.
-As a result, even though our potentials are time-dependent, computed estimates during an individual query will \emph{not} change depending on the visit time.
+% As a result, even though our potentials are time-dependent, computed estimates during an individual query will \emph{not} change depending on the visit time.
 
 \subsection{Multi-Metric Potentials}
 
@@ -424,7 +427,7 @@ The first one uses the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$ and compu
 Since arrival intervals are distances from the source vertex, we have to apply Lazy RPHAST in reverse direction, i.e.\ first, we run Dijkstra's algorithm from $s$ on $\gchu$ and then we apply the recursive distance-memoizing DFS on $\gchd$ for any vertex for which we want to obtain an arrival interval.
 With these arrival intervals, we can now compute lower bounds to the target with the second Lazy RPHAST instantiation, which uses the time-dependent lower bounds $\pcfn$.
 The first step is to run Dijkstra's algorithm from $t$ on $\gchd$.
-To relax an edge $uv \in \echd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using Lazy RPHAST on the bounds.
+To relax an edge $uv \in \rechd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using Lazy RPHAST on the bounds.
 This allows us to determine a tight lower bound for $vu$ at the relevant time and we can then check if we can improve the lower bound from $v$ to $t$, i.e.\
 $\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(vu, \tau))$.
 Having established preliminary backward distances for all vertices in the CH search space of $t$, we can now compute estimates with the recursive distance-memoizing DFS.
