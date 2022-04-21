@@ -860,8 +860,8 @@ Dotted lines only serve the purpose of visualization.
 \end{figure}
 
 Figure~\ref{fig:combined_tt} depicts an example of a combined travel time function.
-We believe that this model is suited very well for practical navigation applications, even though it might not seem as flexible as supporting arbitrary updates to the traffic predictions $p$.
-In fact, we do believe that our model is even better than arbitrary updates to $p$ because all existing speedup techniques rely on $p$ consisting of periodic functions.
+We believe that this model is suited very well for practical navigation applications, even though it might not seem as flexible as supporting arbitrary updates to the traffic predictions $\pred$.
+The problem with live traffic updates to $\pred$ is that these predictions are assumed to be periodic.
 But live traffic incident are inherently tied to the current moment and not expected to repeat in 24 hours.
 
 In~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, a similar model for combined traffic was proposed.
@@ -871,15 +871,14 @@ This allows us to handle blocked edges in a more realistic way.
 In the case of $l(e) = \infty$, i.e.\ the edge is blocked, our combined travel time function for the edge corresponds to waiting until the edge opens up at $\tend(e)$.
 With the model from~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function would decrease from $\infty$ towards the predicted function but, of course, never reach it and thus stay completely blocked.
 Second, in our model, we use $\max(p(e, \tau), \live(e))$, while the authors of~\cite{strasser_et_al:LIPIcs.SEA.2021.6} use $\max(p_{\min}(e), \live(e))$, i.e.\ our model does not allow the live travel time to be less than the predicted travel time.
-Now, one could criticize us for adjusting the model so that our A* approach becomes feasible.
-This would actually be not completely wrong.
-Nevertheless, there are good reasons, why our modelling assumptions are completely fine for practical purposes.
+While this is a significant restriction from a theoretical perspective, there are good reasons why this is a valid modelling assumptions for practical purposes.
 First, the assumption is realistic.
 Live traffic should account for unexpected traffic events.
 In that case, live travel times will very rarely be better than predicted travel times.
-Should live traffic be frequently better than the predicted traffic, than the predicted traffic should be adjusted accordingly.
-Second, the reason to solve such a model to exactness is not that the shortest travel time perfectly matches reality.
-Traffic data is always only an approximation of the reality.
+Should live traffic frequently be better than the predicted traffic, the predicted traffic should be adjusted accordingly.
+Second, a less flexible model which can be solved efficiently and exactly is often more practical than a more flexible one which can only be solved heuristically.
+Further, the reason to solve routing problems to exactness is not that the computed travel times will perfectly match reality.
+Traffic data is always only an approximation of reality.
 Rather, obtaining exact results helps to present users with consistent routes where travel times do not suddenly become better when the user takes an unexpected alternative.
 Further, it allows to definitely attribute ``weird'' routes to either bugs in the data or bugs in the implementation which is tremendously useful in practice.
 
@@ -889,11 +888,16 @@ In this section, we analyze correctness properties for time-dependent A* potenti
 For the analysis, it is oftentimes more practical to use arrival time functions instead of travel time functions.
 Given a travel time function $w$, we denote the respective arrival time function as $\hat{w}(uv, \tau) := w(uv, \tau) + \tau$.
 With arrival time functions, we can represent path lengths simply as the composition of the arrival time functions of the individual edges.
-Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on a graph $G$ with time-dependent travel times $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's algorithm on the same graph with modified weights $w'$.
+Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on the graph $G$ with weights $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's algorithm on $G$ with modified weights $w'$.
+
 Consider a vertex $u$ with an arrival time of $\tau$.
 In A*, its queue key is $\tau' = \pi_t(u, \tau) + \tau = \hat{\pi}_t(u, \tau)$.
-When relaxing an edge $uv$, we get a queue key of $\hat{\pi}_t(v, \hat{w}(uv, \tau))$ at $v$.
-Thus, we get $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$ where $\hat{\pi}_t(u)^{-1}$ is the inverted arrival time function, i.e.\ a \emph{departure time} function.
+For the equivalent run of Dijkstra's algorithm, we want the distances to be equal to those queue keys.
+Therefore, the reduced weight function of edge $uv$ must compose the original function with the potential at the head vertex $v$, i.e.\ $\hat{\pi}_t(v, \hat{w}(uv, \tau))$.
+However, the input of $w$ is a time $\tau$, not the A* queue key $\tau' = \hat{\pi}_t(u, \tau)$.
+To first go back from $\tau'$ to $\tau$, we also need to compose this with the inverted potential function $\hat{\pi}_t(u)^{-1}$.
+Thus, the modified weight $\hat{w}'$ are defined as $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$.
+
 For $\hat{\pi}_t(u)^{-1}$ to be well defined, we need $\tau_1 \neq \tau_2 \implies \hat{\pi}_t(\tau_1) \neq \hat{\pi}_t(\tau_2)$.
 Therefore, for potentials we require the \emph{strong First-In First-Out} property:
 \[
@@ -901,11 +905,24 @@ Therefore, for potentials we require the \emph{strong First-In First-Out} proper
 \]
 Note that potentials which only adhere to the regular FIFO property likely work just as well in practice.
 However, in this case, the modified weights for a theoretically equivalent run of Dijkstra's algorithm are not well-defined anymore.
-This breaks the following correctness argument, but likely not the correctness.
+This breaks the following correctness argument.
+Nevertheless, it appears likely that a more sophisticated analysis could work around this problem.
 
-Shortest paths for these modified weights are the same as with the original weights.
-Consider the weights of two different $s$-$t$ paths.
-The initial potential at $s$ is the same for both paths, all the inner potential evaluations cancel out and the potentials at $s$ and the final potential evaluation at $t$ cannot change the order due to the FIFO property.
+Shortest paths for the modified weights $w'$ are the same as with the original weights $w$.
+Consider a path $P = (s,v_1,\dots,v_k,t)$ and let $(f \circ g)(x) = f(g(x))$ denote the function composition.
+By definition, the arrival time function of a path is
+\[
+\hat{w}'(P) = \hat{\pi}_t(t) \circ \hat{w}(v_k t) \circ \hat{\pi}_t(v_k)^{-1}
+\circ \hat{\pi}_t(v_k) \circ \dots \circ \hat{\pi}_t(v_1)^{-1} \circ
+\hat{\pi}_t(v_1) \circ \hat{w}(s v_1) \circ \hat{\pi}_t(s)^{-1}
+\]
+Note that all the inner potential evaluations cancel out.
+Beside the initial and final potential evaluations, only the composition of the original weights remains.
+Now consider the modified weights of two different $s$-$t$ paths.
+With a fixed departure, the initial inverted potential at $s$ is the same for both paths.
+Then, the original weights determine which path is shorter.
+The final potential evaluation at $t$ cannot change the relative order due to the FIFO property.
+Therefore, shortest paths with respect to $w'$ are the same as with respect to $w$.
 
 We can infer that if these modified weights do not have any negative travel times, then Dijkstra and thus A* will obtain correct results. % running time
 This leads to the \emph{feasibility} property for time-dependent potentials:
@@ -918,18 +935,25 @@ To simplify correctness proofs for potentials, we reformulate this to a simpler 
 \pi_t(v, w(uv, \tau) + \tau) + w(uv, \tau) + \tau & \geq \pi_t(u, \tau) + \tau \\
 \pi_t(v, w(uv, \tau) + \tau) + w(uv, \tau) - \pi_t(u, \tau) & \geq 0
 \end{align*}
-This formulation also shows that the time-dependent feasibility is a generalization of the classical feasibility property.
+This formulation also shows that the time-dependent feasibility is a generalization of the classical feasibility property $w(uv) + \pi_t(v) - \pi_t(u) \geq 0$.
 
 The third property is the \emph{lower bound} property:
 \[
 \pi_t(v, \tau) \leq \dist_w(v,t,\tau)
 \]
 With a potential fulfilling this property, A* is guaranteed to have found the shortest path once the target vertex is settled, even if the potential is not feasible.
-This is because every vertex on the shortest path must have a queue key smaller than the target and by induction all these vertexes must have been settled before the target.
-Also, even with negative travel times, negative cycles are not possible.
+This is because every vertex on the shortest path must have a queue key less or equal than the target.
+Suppose for contradiction, the target vertex would be settled with distance $d$ which is greater than the shortest distance.
+But because of the lower bound property, every vertex on the shortest path will have a queue key smaller than $d$ as soon as it was discovered with its shortest distance.
+By induction, this must happen for all vertices on the shortest path.
+Thus, also the shortest path to $t$ must have been found.
+This is a contradiction.
+
+Also, even with negative travel times due to infeasible potentials, negative cycles are not possible.
 Consider a cycle $C$ starting and ending at vertex $v$.
 The length of the cycle with the modified weights is $w'(C, \tau') = \hat{\pi}_t(v, \hat(w)(C, \hat{\pi}_t(u)^{-1}(\tau')))$ because all inner potential functions cancel out.
 As $\hat{\pi}_t(v)$ has to adhere to the FIFO property, the length of $C$ cannot be negative.
+We can conclude, that the distance at $t$ is final as soon as $t$ was settled.
 Thus, A* with lower bound potentials will obtain correct results.
 However, the running time may be exponential in the graph size.
 
@@ -943,10 +967,10 @@ For the lower bound property it even suffices to guarantee it only at exactly $\
 
 Before discussing further optimizations, we first need to introduce some additional preliminaries.
 Recall that shortcut edges $uv \in E^+$ allow skipping over paths of lower ranked vertices.
-We now denote the length of the shortest such path by $\dist^<_w(u,v) = w^+(uv)$.
-In the main part of the paper, we just stated that the CCH customization yields the appropriate weight function $w^+$ for the full augmented graph $G^+$ with $w^+(uv) = \dist^<(u,v)$.
+We now denote the length of the shortest such path by $\dist^{\prec}_w(u,v) = w^+(uv)$.
+In the main part of the paper, we stated that the CCH customization yields the appropriate weight function $w^+$ for the full augmented graph $G^+$ with $w^+(uv) = \dist^{\prec}(u,v)$.
 This is actually only the \emph{basic customization}.
-Because the augmented graph $G^+$ is valid for all possible weight functions, it contains many unnecessary edges for any individual weight function.
+Because the augmented graph $G^+$ is valid for all possible weight functions, it contains many unnecessary edges for any concrete weight function.
 This can be addressed with two additional steps in the customization phase.
 In the \emph{perfect customization}, edges $uv \in E^+$ are processed again to obtain a weight function $w^*(uv) = \dist(u,v)$.
 The authors of~\cite{dsw-cch-15} proved that edges $uv$ where $w^+(uv) > w^*(uv)$ are not necessary to answer queries correctly.
@@ -954,26 +978,26 @@ Thus, in a final step, these edges are removed and a \emph{reduced augmented gra
 All three customization steps can be parallelized efficiently~\cite{bsw-rttau-19}.
 
 CATCHUp does not support a time-dependent \emph{perfect} customization.
-However, a decent number of unnecessary edges can still be identified by running the time-independent perfect customization on $b^+_{\max}$ which yields $b^*_{\max}$.
-Then, each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^<_w(u,v,\tau)$ can be removed.
-We will also utilize this insight for our time-dependent potentials.
+However, a decent number of unnecessary edges can be identified by running the time-independent perfect customization on $b^+_{\max}$ to obtain $b^*_{\max}$.
+Each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^{\prec}_w(u,v,\tau)$ can be removed.
+We utilize this insight for our time-dependent potentials.
 
 \subparagraph{Multi-Metric Potentials.}
 During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
 This allows us to remove unnecessary edges and accelerate the query phase.
-We remove edges $uv$ where $\dist^<_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
+We remove edges $uv$ where $\dist^{\prec}_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
 We could remove even more edges if we were to check the condition for every lower bound weight function individually.
 However, in this case we could not reuse the same reduced augmented graph topology for all weight functions.
 As this would roughly double memory consumption, we only remove edges which can be removed for all weight functions.
 We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
 
-The tightness of MMP can be improved further by switching to weight functions for smaller intervals during the progress of the query.
-When initializing the potential, we select, beside $[\tau_i', \tau_i''] \supseteq [\tdep,\tmax]$, additional intervals $[\tau_j', \tau_j''] \subset [\tau_i', \tau_i'']$ with $\tau_j'' \geq \tmax$.
-When evaluating the potential of a vertex at instant $\tau$, we use the weight function with the shortest associated interval which still includes $\tau$.
-However, running Lazy RPHAST separately for each of these weight functions would be too expensive.
-Therefore, we modify the DFS part of Lazy RPHAST to track, beside the distances $\mathtt{D}[u]$, also the weight function $\mathtt{W}[u]$ which was used.
-Then, an already memoized distance $\mathtt{D}[v]$ for vertex $v$ can be reused if the interval associated with $\mathtt{W}[v]$ is a superset of the best interval for $\tau$.
-By passing $\tau$ unmodified to recursive invocations, we can maintain the invariant that if $\mathtt{D}[v]$ is final and valid for $\tau$, also all vertices in the CH search space of $v$ will have a valid lower bound for at least time $\tau$.
+% The tightness of MMP can be improved further by switching to weight functions for smaller intervals during the progress of the query.
+% When initializing the potential, we select, beside $[\tau_i', \tau_i''] \supseteq [\tdep,\tmax]$, additional intervals $[\tau_j', \tau_j''] \subset [\tau_i', \tau_i'']$ with $\tau_j'' \geq \tmax$.
+% When evaluating the potential of a vertex at instant $\tau$, we use the weight function with the shortest associated interval which still includes $\tau$.
+% However, running Lazy RPHAST separately for each of these weight functions would be too expensive.
+% Therefore, we modify the DFS part of Lazy RPHAST to track, beside the distances $\mathtt{D}[u]$, also the weight function $\mathtt{W}[u]$ which was used.
+% Then, an already memoized distance $\mathtt{D}[v]$ for vertex $v$ can be reused if the interval associated with $\mathtt{W}[v]$ is a superset of the best interval for $\tau$.
+% By passing $\tau$ unmodified to recursive invocations, we can maintain the invariant that if $\mathtt{D}[v]$ is final and valid for $\tau$, also all vertices in the CH search space of $v$ will have a valid lower bound for at least time $\tau$.
 
 \subparagraph{Interval-Minimum Potentials.}
 Similarly to the Multi-Metric Potential, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph which accelerates queries.
