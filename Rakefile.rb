@@ -294,8 +294,8 @@ namespace "exp" do
       10.times do
         [1, 2, 4, 8, 16].each do |k|
           sh "RAYON_NUM_THREADS=#{k} cargo run --release --bin interval_min_reduction -- #{ptv_eur} 16 customized_corridor_mins reduced_corridor_mins > #{exp_dir}/compression_par/$(date --iso-8601=seconds).json"
-          sh "rm -r #{graph}interval_min_pot"
-          sh "rm -r #{graph}reduced_corridor_mins"
+          sh "rm -r #{ptv_eur}interval_min_pot"
+          sh "rm -r #{ptv_eur}reduced_corridor_mins"
         end
       end
     end
