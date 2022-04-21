@@ -479,7 +479,10 @@ The minimum difference is tracked in an atomic variable.
 % env
 \subparagraph{Environment.} Our benchmark machine runs openSUSE Leap 15.3 (kernel 5.3.18), and has 192\,GiB of DDR4-2666 RAM and two Intel Xeon Gold 6144 CPUs, each of which has 8 cores clocked at 3.5\,GHz and 8~$\times$~64\,KiB of L1, 8~$\times$~1\,MiB of L2, and 24.75\,MiB of shared L3 cache.
 Hyperthreading was disabled and parallel experiments use 16 threads.
-We implemented our algorithms in Rust\footnote{The code for this paper and all experiments is available at \url{https://github.com/kit-algo/tdpot}} and compiled them with \texttt{rustc 1.61.0-nightly (c84f39e6c 2022-03-20)} in the release profile with the \texttt{target-cpu=native} option.
+We implemented our algorithms in Rust\footnote{
+% The code for this paper and all experiments is available at \url{https://github.com/kit-algo/tdpot}
+Our code and experiment scripts are available at \url{https://shorturl.at/vBD05} (shortened for anonymity)
+} and compiled them with \texttt{rustc 1.61.0-nightly (c84f39e6c 2022-03-20)} in the release profile with the \texttt{target-cpu=native} option.
 % To compile InertialFlowCutter and RoutingKit which are written in C++, we use GCC~10.3.0 using optimization level 3 and the -march=native option.
 
 \subparagraph{Datasets.}
