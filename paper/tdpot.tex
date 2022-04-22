@@ -89,7 +89,7 @@
 \newcommand*{\echd}{E^{\downarrow}}
 
 \newcommand*{\pcfn}{\underline{b'^+}}
-\newcommand*{\bucketlen}{x}
+\newcommand*{\bucketlen}{\beta}
 
 \usepackage[algo2e,vlined]{algorithm2e}
 \usepackage{booktabs}
@@ -158,33 +158,31 @@ Thus, these queries can be accelerated by computing auxiliary data in an off-lin
 A popular technique which follows this approach is \emph{Contraction Hierarchies} (CH)~\cite{gssv-erlrn-12}.
 During the preprocessing vertices are ranked heuristically by ``importance'' where more important vertices are part of more shortest paths.
 Shortcut edges are inserted to skip over unimportant vertices.
-This allows for a very fast query where only few vertices are explored.
+This allows for a very fast query where only a few vertices are explored.
 On typical continental-sized networks, queries take well below a millisecond.
-\emph{Multi-Level Dijkstra} (MLD)~\cite{swz-umlgt-02} is a similar approach which also utilizes shortcut edges but inserts them based on a multi-level partitioning.
+\emph{Multi-Level Dijkstra} (MLD)~\cite{swz-umlgt-02} is a similar approach that also utilizes shortcut edges but inserts them based on a multi-level partitioning.
 It achieves slightly slower query times of around a millisecond.
 MLD is the first algorithm to operate under the \emph{Customizable Route Planning} (CRP) framework~\cite{dgpw-crprn-13}, i.e.\ it has a second, faster preprocessing phase called \emph{customization} which allows integrating arbitrary weight functions (or live traffic updates for the current weights) into the auxiliary data without rerunning the entire first preprocessing phase, which is much slower.
-The MLD customization takes a few seconds, which allows running it every minute.
-This three-phase setup has proven to be instrumental to support live traffic scenarios in practical applications~\cite{bingblog}. % TODO
-CH has later been generalized to support customizability as well, which resulted in Customizable Contraction Hierarchies (CCH)~\cite{dsw-cch-15}.
+The MLD customization takes a few seconds, which allows for running it every minute.
+This three-phase setup has proven to be instrumental to support live traffic scenarios in practical applications~\cite{bingblog}.
+Therefore, CH was generalized to Customizable Contraction Hierarchies (CCH)~\cite{dsw-cch-15} to support customizability as well.
 
 Both CH and MLD have been extended to time-dependent routing.
 However, dealing with weight functions instead of scalar weights makes the preprocessing much harder and leads to difficult trade-offs.
-TCH~\cite{bgsv-mtdtt-13} has fast queries but a very expensive preprocessing phase (up to several hours) and may produce prohibitive amounts of auxiliary data (> 100\,GB).
-% TODO 3-phase not introduced
+TCH~\cite{bgsv-mtdtt-13} has fast queries but a very expensive preprocessing phase (up to several hours) and may produce prohibitive amounts of auxiliary data ($> 100$\,GB).
 TD-CRP~\cite{bdpw-dtdrp-16}, an extension of MLD, even follows a three-phase approach and has a relatively fast customization phase.
 However, this is only possible by giving up exactness.
 Also, TD-CRP does not support path unpacking.
 CATCHUp~\cite{swz-sfert-21} adapts CCH to the time-dependent setting and has fast and exact queries with significantly reduced memory consumption.
 While it has a customization phase, running it takes significantly longer than a traditional CCH or CRP customization.
 On the networks used in this paper, a CATCHUp customization may even take hours, which is too slow for a setting with live traffic updates.
-% TDS?, (Shark?)
 
 ALT~\cite{gh-cspas-05,gw-cppsp-05} is an early A*-based speedup technique for routing in road networks.
 It combines precomputed distances to a few \emph{landmark} vertices with the triangle inequality to obtain distance estimates to the target vertex.
 % ALT has also received research interest in areas beyond route planning.
 However, query times are significantly slower than with shortcut-based approaches such as CH or MLD.
-ALT has also been extended to dynamic and time-dependent settings~\cite{dn-crdtd-12}. % combined?
-While this approach allows incremental modifications of the input travel times, it is not as flexible as customization based approaches which allow arbitrary updates.
+ALT also has been extended to dynamic and time-dependent settings~\cite{dn-crdtd-12}. % combined?
+While this approach allows incremental modifications of the input travel times, it is not as flexible as customization based approaches allowing arbitrary updates.
 % Core-ALT?
 
 \emph{CH-Potentials}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is another more recent A*-based approach.
@@ -215,9 +213,8 @@ Our time-dependent potentials are up to an order of magnitude faster than CH-Pot
 We consider simple directed graphs $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
 We use $uv$ as a short notation for an edge from a \emph{tail} vertex $u$ to a \emph{head} vertex $v$.
 Weight functions $w : E \to (\mathbb{Z} \to \mathbb{N}^0)$ map edges to time-dependent functions, which in turn map a departure time $\tau$ at the tail $u$ to a travel time $w(uv)(\tau)$.
-% The arrival at the head $v$ is thus $w(uv)(\tau) + \tau$.
 To simplify notation, we will often write $w(uv, \tau)$.
-When it is clear from context that we are writing about constant functions, we omit the time argument and write $w(uv)$.
+When it is clear from the context that we are writing about constant functions, we omit the time argument and write $w(uv)$.
 The reversed graph $\overleftarrow{G} = (V, \overleftarrow{E})$ contains a reversed edge $vu$ for every edge $uv \in E$.
 In this paper, we only need time-independent corresponding reversed weight functions.
 Therefore, we define $\overleftarrow{w}(vu) = w(uv)$.
@@ -225,7 +222,6 @@ The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively 
 We denote the travel time of the shortest path between vertices $s$ and $t$ for the departure time $\tdep$ as $\dist_w(s,t,\tdep)$.
 We assume that all travel time functions adhere to the \emph{First-In First-Out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
 Formally stated, this means $\tau + w(\tau) \leq \tau + \epsilon + w(\tau + \epsilon)$ for any $\epsilon \geq 0$.
-% TODO explain waiting?
 With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{or-tnp-89}.
 
 \subsection{Problem Model}
@@ -235,7 +231,7 @@ We consider an application model with three phases.
 During the \emph{preprocessing} phase, the graph $G=(V,E)$ and a weight function $\pred$ of time-dependent traffic predictions are given.
 Predicted travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day.
 A preprocessing algorithm may now precompute auxiliary data, which may take several hours.
-% Preprocessing should still be fast enough to rerun it on a daily basis.
+% Preprocessing should still be fast enough to rerun it daily.
 In the \emph{update} phase, a weight function $\live$ of currently observed (constant) live travel times are given for the current moment $\tnow$.
 Further, each edge $e$ has a point in time $\tend(e)$ when we switch back to the predicted travel time.
 For edges without live traffic data, we set $\tend(e) = \tnow$.
@@ -257,14 +253,14 @@ The priority queue is initialized with $s$ and $\mathtt{D}[s]$ set to $\tdep$.
 In each iteration, the next closest vertex $u$ is extracted from the queue and \emph{settled}.
 Outgoing edges $uv$ are \emph{relaxed}, i.e.\ the algorithm checks if $\mathtt{D}[u] + w(uv, \mathtt{D}[u])$ improves $\mathtt{D}[v]$.
 If so, the queue position of $v$ is adjusted accordingly.
-Once $t$ has been settled, the final distance is known and the search terminates.
+Once $t$ has been settled, the final distance is known, and the search terminates.
 We denote visited vertices as the \emph{search space} of a query.
 
 A*~\cite{hnr-afbhd-68} is a goal-directed extension of Dijkstra's algorithm.
 It applies a \emph{potential} function $\pi_t$ which maps vertices to an estimate of the remaining distance to $t$.
 % A*~\cite{hnr-afbhd-68} is an extension of Dijkstra's algorithm where the search is guided towards the target via a potential function $\pi_t$ which maps vertices to an estimate of the remaining distance to $t$.
 This estimate is added to the queue key.
-Thus, vertices closer to the target are visited earlier and the search space becomes smaller.
+Thus, vertices closer to the target are visited earlier, and the search space becomes smaller.
 %
 In this work, we use a time-dependent generalization $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$ of A* potentials, i.e.\ estimates are a function of the time.
 This allows us to obtain tighter estimates and enables faster queries.
@@ -293,18 +289,15 @@ Our proposed potentials heavily rely on this and only compute data for the speci
 
 % \subsection{Contraction Hierarchies}
 
-\emph{Contraction Hierarchies} (CH)~\cite{gssv-erlrn-12} is a speedup technique to accelerate shortest path computations on time-independent road networks through precomputation.
-% For a detailed discussion we refer to~\cite{gssv-erlrn-12}.
-% Here, we briefly introduce necessary notation and concepts used in this paper.
+\emph{Contraction Hierarchies} (CH)~\cite{gssv-erlrn-12} is a speedup technique to accelerate shortest path searches on time-independent road networks through precomputation.
 During the preprocessing, a total order $v_1 \prec \dots \prec v_n$ of all vertices $v_i \in V$ by ``importance'' is determined heuristically, where more important vertices should lie on more shortest paths.
-% Intuitively, vertices on highways are more important than vertices on rural streets.
 Then, an \emph{augmented graph} $G^+ = (V, E^+)$ with additional \emph{shortcut edges} and weights $w^+$ is constructed.
 Shortcut edges $uv$ allow to ``skip over'' paths $(u,\dots,x_i,\dots,v)$ where $x_i \prec u$ and $x_i \prec v$.
 Therefore, $w^+(uv)$ is assigned the length of the shortest such path.
 We sometimes split $G^+$ into an upward graph $\gchu = (V, \echu)$ which contains only edges $uv$ where $v \succ u$ and a downward graph $G^{\downarrow} = (V, E^{\downarrow})$ defined analogously.
 The augmented graph has the property that between any two vertices $s$ and $t$, there exists an \emph{up-down-path} $P$ with $w^+(P) = \dist_w(s,t)$ which uses first only edges from $\echu$ and then only edges from $\echd$.
 Such a path can be found by running the bidirectional variant of Dijkstra's algorithm from $s$ on $\gchu$ and from $t$ on $\gchd$.
-Because only few vertices are reachable in this \emph{CH search space}, queries are very fast, i.e.\ about a tenth of a millisecond on continental-sized networks.
+Because only a few vertices are reachable in this \emph{CH search space}, queries are very fast, i.e.\ about a tenth of a millisecond on continental-sized networks.
 
 In this work we build on \emph{Customizable Contraction Hierarchies} (CCH)~\cite{dsw-cch-15}.
 For CCH, the construction of the augmented graph is split into two phases.
@@ -347,9 +340,11 @@ The goal is to reduce the impact of the potential evaluation overhead by avoidin
 
 \section{Time-Dependent A* Potentials}
 
-In this section, we propose two time-dependent A* potentials which are both extensions of Lazy RPHAST.
-Lazy RPHAST/CH-Potentials is already quite an efficient potential and obtains exact distances with respect to scalar lower bound weights, i.e.\ the tightest estimates which are possible with a time-independent potential definition.
-To outperform CH-Potentials, we must not only obtain significantly tighter estimates but also be careful to not make the potential evaluation too expensive.
+In this section, we propose two time-dependent A* potentials.
+Both are extensions of Lazy RPHAST.
+Lazy RPHAST/CH-Potentials is already a very efficient potential and obtains exact distances for scalar lower bound weights, i.e.\ the tightest possible estimates with a time-independent potential definition.
+To outperform CH-Potentials, on the one hand, we have to obtain significantly tighter estimates.
+On the other hand, we also must avoid the potential evaluation becoming too expensive.
 Therefore, we avoid costly operations on functions and work with scalar values as much as possible.
 % As a result, even though our potentials are time-dependent, computed estimates during an individual query will \emph{not} change depending on the visit time.
 
@@ -358,9 +353,9 @@ Therefore, we avoid costly operations on functions and work with scalar values a
 Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival time at the target.
 Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l[\tau', \tau''](e) := \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
 Clearly, $\dist_{l[\tau', \tau'']}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
-If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and if the difference between $\tau'$ and $\tau''$ is not too large, the estimates will be significantly tighter than global lower bound distances.
+If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and, if the difference between $\tau'$ and $\tau''$ is not too big, the estimates will be significantly tighter than global lower bound distances.
 The \emph{Multi-Metric Potentials} (MMP) approach is based on this observation.
-Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions valid for different time intervals.
+Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions for different time intervals.
 At query time, we then select an appropriate weight function.
 Efficiently computing distances with respect to the selected weight function is done with Lazy RPHAST.
 
@@ -368,18 +363,18 @@ Efficiently computing distances with respect to the selected weight function is 
 The first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute an importance ordering and construct the unweighted augmented graph.
 Now let $I$ be a set of time intervals.
 In our implementation,
-we cover the time between 6:00 and 22:00 with intervals of length one, two, four and eight hours, starting every 30 minutes,
+we cover the time between 6:00 and 22:00 with intervals of a length of one, two, four, and eight hours, starting every 30 minutes,
 and one interval covering the entire day.
-We do not maintain any additional intervals between 22:00 and 6:00 as most edge weights correspond to their respective freeflow travel time during this period.
+We do not maintain any additional intervals between 22:00 and 6:00 as most edge weights correspond to their respective free-flow travel time during this period.
 Thus, the lower bound weights would be equal to the full-day lower bounds.
 During preprocessing, for each interval $[\tau_i', \tau_i''] \in I$, we extract lower bound functions $l[\tau_i', \tau_i'']$ and run the CCH customization algorithm to obtain $l[\tau_i', \tau_i'']^+$.
-This can be trivially parallelized.
+This can be parallelized trivially.
 Also, the customization can be parallelized internally.
 For further engineering details, we refer to~\cite{dsw-cch-15,bsw-rttau-19,ghuw-fbndocch-19}.
 
-During the update phase, we compute an additional lower bound weight function starting at $\tnow$ with duration $\Delta$ which incorporates the current live traffic situation $\comb$ and run the basic customization for it.
-We use $\Delta =$ 59 minutes to reasonably cover the live traffic but keep the live interval shorter than any other interval.
-Further, we extract an upper bound weight function $\comb_{\max}$ which is valid for the entire day with respect to both the predicted and the live traffic and perform the CCH basic customization to obtain $\comb^+_{\max}$.
+During the update phase, we compute an additional lower bound weight function starting at $\tnow$ with duration $\delta$ derived from the combined weights $\comb$ and run the basic customization for it.
+We use $\delta =$ 59 minutes to reasonably cover the live traffic but keep the live interval shorter than any other interval.
+Further, we extract an upper bound weight function $\comb_{\max}$ which is valid for the entire day for both the predicted and the live traffic, and perform the CCH basic customization to obtain $\comb^+_{\max}$.
 
 The query starts with a classical CCH query on the customized upper bound $\comb^+_{\max}$ to obtain a pessimistic estimate of $\tmax$.
 We then select the smallest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
@@ -398,15 +393,14 @@ Also, shortest distances for a lower bound weight function are feasible potentia
 While Lazy RPHAST has a single scalar weight for each edge, the Interval-Minimum Potential uses a time-dependent function.
 This allows for tighter estimates but introduces new challenges.
 First, we need an augmented graph with sufficiently accurate time-dependent lower bounds.
-We utilize the existing CATCHUp customization~\cite{swz-sfert-21} because it is also based on CCH.
-Second, storing the shortcut travel time functions $w^+$ can be very expensive in terms of memory consumption.
-Also, the representation as a list of breakpoints makes the evaluation much more expensive than looking up a scalar weight.
+We utilize the existing CATCHUp customization~\cite{swz-sfert-21} because it is based on CCH.
+Second, storing the shortcut travel time functions $w^+$ may consume a lot of memory.
+Further, the representation as a list of breakpoints makes the evaluation more expensive than looking up a scalar weight.
 Therefore, we resort to a different representation and store functions as piecewise constant values in buckets of equal duration.
-In our implementation, we split the day into 96 buckets of length 15 minutes.
 Third, evaluating these functions requires a time argument.
 While $\pi_t(v, \tau)$ includes the time argument $\tau$ for the time at $v$, Lazy RPHAST also needs a time for every recursive invocation.
-% TODO der satz will zu viel
-We apply Lazy RPHAST a second time on global upper and lower bound weight functions $\comb_{\max}^+$ and $\pred_{\min}^+$ to obtain arrival intervals for arbitrary vertices.
+Therefore, we apply Lazy RPHAST a second time on global upper and lower bound weight functions $\comb_{\max}^+$ and $\pred_{\min}^+$ to quickly obtain arrival intervals for arbitrary vertices.
+We then use these intervals to evaluate the edge weights and obtain tight time-dependent lower bounds.
 
 \subparagraph{Phase Details.}
 The first preprocessing step is the CCH preprocessing.
@@ -416,17 +410,19 @@ For this, we utilize CATCHUp~\cite{swz-sfert-21}, a time-dependent adaptation of
 The CATCHUp customization yields for each edge in $uv \in E^+$ approximated \emph{time-dependent} lower bound functions $\underline{b^+}(uv)$.
 We transform the time-dependent piecewise linear lower bound functions $\underline{b^+}$ into piecewise \emph{constant} lower bound functions
 $\pcfn(uv, \tau) := \min \left\{ \underline{b^+}(uv, \tau') \mid \bucketlen  \lfloor \frac{\tau}{\bucketlen} \rfloor \leq \tau' < \bucketlen (\lfloor \frac{\tau}{\bucketlen} \rfloor + 1) \right\}$
-where $\bucketlen$ is the length of each constant segment, in our case 15 minutes.
-This enables a compact representation because functions can be represented with a fixed number of values per edge.
-We additionally derive a scalar lower bound $b^+_{\min}$.
+where $\bucketlen$ is the length of each constant segment.
+This enables a compact representation.
+Functions can be represented with a fixed number of values per edge.
+We use 96 buckets of length $\bucketlen = 15$ minutes.
+Additionally, we derive a scalar lower bound $b^+_{\min}$.
 Note that $b^+_{\min}$ is typically tighter than bounds obtained by a time-independent customization on lower bounds of the input functions, i.e.\ $w^+_{\min}$.
 
-In the update phase, we extract a combined traffic upper bound weight function $\comb_{\max}$ for the entire day, and run the CCH customization to obtain $\comb^+_{\max}$.
+In the update phase, we extract a combined traffic upper bound weight function $\comb_{\max}$ for the entire day and run the CCH customization to obtain $\comb^+_{\max}$.
 
-% make sure its clear that the lazy rphast remains time-independent
 The query consists of two instantiations of the Lazy RPHAST algorithm.
 The first one uses the scalar bounds $b^+_{\min}$ and $\comb^+_{\max}$ and computes an interval of possible arrival times at arbitrary vertices when departing from $s$ at $\tdep$.
-Since arrival intervals are distances from the source vertex, we have to apply Lazy RPHAST in reverse direction, i.e.\ first, we run Dijkstra's algorithm from $s$ on $\gchu$ and then we apply the recursive distance-memoizing DFS on $\gchd$ for any vertex for which we want to obtain an arrival interval.
+Since arrival intervals are distances from the source vertex, we have to apply Lazy RPHAST in reverse direction.
+This means we first run Dijkstra's algorithm from $s$ on $\gchu$, and then, we apply the recursive distance-memoizing DFS on $\gchd$ for any vertex for which we want to obtain an arrival interval.
 We denote this instance as AILR for \emph{Arrival Interval Lazy RPAHST}.
 With these arrival intervals, we can now compute lower bounds to the target with the second Lazy RPHAST instantiation, which uses the time-dependent lower bounds $\pcfn$.
 The first step is to run Dijkstra's algorithm from $t$ on $\gchd$.
@@ -439,7 +435,7 @@ Then, we use AILR to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at 
 Finally, we relax the upward edges $uv$ set $\mathtt{D}^{\downarrow}[u] \leftarrow \min(\mathtt{D}^{\downarrow}[u], \mathtt{D}^{\downarrow}[v] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(uv, \tau))$.
 This yields the final estimate for $u$.
 
-Choosing the right memory layout for the bucket weights is crucial for the performance.
+Choosing a good memory layout for the bucket weights is crucial for the performance.
 We store all edge weights of each bucket consecutively.
 Typically, only a few buckets per edge are relevant because the arrival intervals are relatively small.
 Also, all outgoing edges of each vertex are evaluated consecutively.
@@ -463,13 +459,13 @@ We can merge IMP buckets analogously.
 Thus, we can reduce memory consumption by trading tightness.
 Both potentials can handle merged lower bound functions with a layer of indirection:
 Buckets and intervals are mapped to a weight function ID.
-Weight functions to which multiple buckets/intervals map have for each edge the minimum weight of all included functions.
+The weight of an edge in a merged weight function is the minimum weight of this edge in all included functions.
 
 We now discuss an efficient and well-parallelizable algorithm to iteratively merge weight functions until only $k$ functions remain.
-In each step, we merge the pair of weight functions with the minimal sum of squared differences over all edge weights.
-Since comparing all pairs of weight functions is expensive, we track the minimum difference sum $\delta_{\min}$ we have found so far and stop any comparison where the sum exceeds $\delta_{\min}$.
+In each step, we merge the pair of weight functions with the minimal sum of squared differences of all edge weights.
+Since comparing all pairs of weight functions is expensive, we track the minimum difference sum $\Delta_{\min}$ we have found so far and stop any comparison where the sum exceeds $\Delta_{\min}$.
 However, even when stopping a comparison, we store the preliminary sum and the edge ID up to which we have summed up the differences.
-Then, we do not need to start from scratch should we need to continue to compare this particular pair of weight functions.
+Then, we do not need to start from scratch should we continue to compare this particular pair of weight functions.
 Finally, we maintain all pairs of weights along with the (possibly preliminary) difference sums in a priority queue ordered by the difference sums.
 When merging two weight functions, all other associated queue entries are removed from the queue and new entries for comparisons between the new weight function and all other functions are inserted.
 To determine the next weight function pair to merge, unfinished weight function pairs are popped from the queue and processed in parallel.
@@ -491,7 +487,7 @@ Sadly, we cannot provide access to these datasets due to non-disclosure agreemen
 We are not aware of any publicly available real-world traffic feeds or predictions.
 However, as these datasets are the same ones used in~\cite{swz-sfert-21,strasser_et_al:LIPIcs.SEA.2021.6}, at least some comparability is given.
 %
-Our first network, PTV Europe, has been provided by PTV\footnote{\url{https://ptvgroup.com}} in 2020 and is based on TomTom\footnote{\url{https://www.tomtom.com}} routing data covering western Europe.
+Our first network, PTV Europe, has been provided by PTV\footnote{\url{https://ptvgroup.com}} in 2020 and is based on TomTom\footnote{\url{https://www.tomtom.com}} routing data covering Western Europe.
 It has 28.5\,M vertices and 61\,M edges.
 76\% of the edges have a non-constant travel time.
 The data includes a traffic incident snapshot from 2020/10/28 07:47 with live speeds and estimated incident durations for 215\,k vertex pairs.
@@ -502,10 +498,10 @@ It has 16.2\,M vertices and 35.2\,M edges.
 For this instance, we have proprietary traffic data provided by Mapbox\footnote{\url{https://mapbox.com}}.
 This includes traffic predictions for 38\% of the edges in the form of predicted speeds for all five-minute periods over the course of a week.
 We only use the predictions for one day.
-Also, we exclude speed values which are faster than the freeflow speed computed by RoutingKit.
+Also, we exclude speed values which are faster than the free-flow speed computed by RoutingKit.
 The data also includes two live traffic snapshots in the form of OSM node ID pairs and live speeds for the edge between the vertices.
 One is from Friday 2019/08/02 15:41 and contains 320\,k vertex pairs and the other from Tuesday 2019/07/16 10:21 and contains 185\,k vertex pairs.
-The datasets do no contain any estimate for how long the observed live speeds will be valid.
+The datasets do not contain any estimate for how long the observed live speeds will be valid.
 We set $\tend$ to one hour after the snapshot time.
 % relative delays?
 Note that even though it is smaller and has fewer time-dependent edges, OSM Germany is actually the harder instance.
@@ -560,24 +556,26 @@ Preprocessing and update phases utilize all cores using 16 threads.
 % \subparagraph{Algorithms.}
 % In our experiments, we run A* with different potentials.
 % We denote Multi-Metric Potentials by MMP and Interval-Minimum Potential by IMP.
-We compare our time-dependent potentials MMP and IMP against time-independent CCH-Potentials which is the only other speedup technique we are aware of that supports our problem model.
+We compare our time-dependent potentials MMP and IMP against time-independent CCH-Potentials.
+It is the only other speedup technique we are aware of that supports our problem model.
 Dijkstra's algorithm without any acceleration is our baseline.
 
 \begin{table}
 \centering
 \caption{
 Query and preprocessing performance results of different potential functions on different graphs and live traffic scenarios.
-We report average running times, number of queue pops, relative increases of the result distance over the initial distance estimate and speed-ups over Dijkstra's algorithm for 100\,k random queries.
+We report average running times, number of queue pops, relative increases of the result distance over the initial distance estimate and speedups over Dijkstra's algorithm for 100\,k random queries.
 Additionally, we report preprocessing and update times and the memory consumption of precomputed auxiliary data.
 }\label{tab:pot_perf}
 \input{table/pot_perf.tex}
 \end{table}
 
-\subparagraph{Experiments.} In Table~\ref{tab:pot_perf}, we report key performance results for our time-dependent potentials on random queries.
+\subparagraph{Experiments.}
+In Table~\ref{tab:pot_perf}, we report key performance results for our time-dependent potentials on random queries.
 We observe that IMP is the fastest approach by a significant margin, up to an order of magnitude faster than time-independent CCH-Potentials and roughly two orders of magnitude faster than Dijkstra's algorithm.
 The search space reduction is even greater, but this does not fully translate to running times due to the higher evaluation overhead of IMP.
 With only predicted traffic, IMP is only two to three times slower than CATCHUp~\cite{swz-sfert-21}.
-This shows that using A* to gain algorithmic flexibility comes at a price but the overhead compared to purely hierarchical techniques is manageable.
+This shows that using A* to gain algorithmic flexibility comes at a price, but the overhead compared to purely hierarchical techniques is manageable.
 In contrast, MMP is only slightly faster than CCH-Potentials.
 This is expected since random queries are mostly long-range for which MMP is not particularly well suited.
 
@@ -593,8 +591,9 @@ Both our approaches are quite expensive in terms of memory consumption, but this
 Introducing live traffic decreases the quality of the estimates and thus increases search space sizes and running times.
 For IMP, this increases running times by roughly a factor of two.
 However, even with heavy rush hour traffic, IMP is still more than 90 times faster than Dijkstra's algorithm.
-Surprisingly, for CCH-Potentials and MMP, this scenario seems to be easier to handle than light midday traffic.
-This is actually an effect of the \emph{predicted} traffic which also has a strong influence on the performance of CCH-Potentials and MMP depending on the departure time.
+Surprisingly, for CCH-Potentials and MMP, this scenario seems easier to handle than light midday traffic.
+This actually is an effect of the \emph{predicted} traffic.
+It also has a strong influence on the performance of CCH-Potentials and MMP depending on the departure time.
 
 \begin{figure}[tbh]
 \centering
@@ -611,9 +610,9 @@ Clearly, the departure time has a significant influence both for short-range and
 For long-range queries, the peaks are shifted and smeared because of the travel time (4--5 hours on average on OSM Germany) covered by the query.
 This is the reason why the heavy afternoon traffic appears to be easier than the light midday traffic for MMP and CCH-Potentials.
 For IMP, the influence of the departure time is much smaller, which makes it consistently the fastest approach on long-range queries.
-For short-range queries, the large overhead of IMP make it the slowest during the night.
+For short-range queries, the overhead of IMP make it the slowest during the night.
 Moreover, MMP is roughly as fast as IMP for 1h queries during the daytime.
-Therefore, MMP may actually be a very simple and effective approach for practical applications where short-range queries are more prominent.
+Therefore, MMP may actually be a simple and effective approach for practical applications where short-range queries are more prominent.
 
 \begin{figure}[!b]
 \centering
@@ -629,17 +628,17 @@ All other running times are indicated as outliers.
 Figure~\ref{fig:ranks} depicts the performance by query distance.
 For short-range queries, IMP is slower than the other approaches because the potential is expensive to evaluate, but it scales much better to long-range queries because of its estimates are tighter.
 Also, the variance in running times is significantly smaller.
-Even for rank $2^{24}$, most queries can be answered within a few tenths of milliseconds.
+Even for rank $2^{24}$, most queries can be answered within a few tens of milliseconds.
 Nevertheless, MMP is actually faster on most ranks.
 Only at rank $2^{24}$, MMP running times become as slow as the CCH-Potentials baseline.
-A strong jump in MMP running times can be observed from rank $2^{23}$ to $2^{24}$.
+A jump in MMP running times can be observed from rank $2^{23}$ to $2^{24}$.
 This is because the mean query distance jumps from five to six hours on rank $2^{23}$ to over eight hours on rank $2^{24}$, which is longer than the longest covered interval.
 Thus, on rank $2^{24}$, MMP fall back to classical CCH-Potentials on many queries.
 We also observe a few strong outliers.
 This happens because of blocked streets in the live traffic data.
 When the target vertex of a query is only reachable through a blocked road segment, A* will traverse large parts of the networks until the blocked road opens up.
 This affects all three potentials in the same way and demonstrates an inherent weakness of A*-based approaches: the performance always depends on the quality of the estimates.
-However, the time-dependent preprocessing algorithms of purely hierarchical approaches are on realistic instances just too expensive for frequent rerunning.
+However, on realistic instances, the time-dependent preprocessing algorithms of purely hierarchical approaches are too expensive for frequent rerunning.
 This makes our approach the first to enable interactive query times across all distances in a setting with combined live and predicted traffic.
 
 \begin{figure}[!t]
@@ -654,7 +653,7 @@ Right: Boxplot of the per-query relative slowdown over the running time of the r
 Finally, Figure~\ref{fig:compression} showcases the effects of reducing the number of weight functions.
 MMP appears to be very robust against compression.
 We can reduce the number of weight functions to 16 (a memory usage reduction of about a factor of 6) before the slowdowns become noticeable in the mean running time.
-However, MMP only achieves relatively small speed-ups compared to CCH-Potentials, i.e.\ rarely more than a factor of three.
+However, MMP only achieves relatively small speedups compared to CCH-Potentials, i.e.\ rarely more than a factor of three.
 Therefore, its robustness is not particularly surprising.
 IMP, which achieves stronger speedups, is less robust against compression.
 Nevertheless, we can reduce the memory consumption by a factor of about three to 32 functions and still achieve very decent query times.
@@ -670,9 +669,9 @@ See Appendix~\ref{sec:appendix:parallelization} for further details on the effec
 In this paper, we proposed time-dependent A* potentials for efficient and exact routing in time-dependent road networks with both predicted and live traffic.
 We presented two realizations of time-dependent potentials with different trade-offs.
 Both allow fast live traffic updates within a fraction of a minute.
-IMP achieve query times two orders of magnitude faster than Dijkstra's algorithm and up to an order of magnitude faster than state-of-the-art time-independent potentials.
+IMP achieves query times two orders of magnitude faster than Dijkstra's algorithm and up to an order of magnitude faster than state-of-the-art time-independent potentials.
 To the best of our knowledge, this makes our approach the first to achieve interactive query performance while allowing fast updates in this setting.
-For future work, we would like to apply our time-dependent potentials to other extended scenarios in time-dependent routing for example to include turn costs.
+For future work, we would like to apply our time-dependent potentials to other extended scenarios in time-dependent routing, for example to incorporate turn costs.
 
 % \section{Typesetting instructions -- Summary}
 % \label{sec:typesetting-summary}
@@ -942,7 +941,7 @@ The third property is the \emph{lower bound} property:
 \pi_t(v, \tau) \leq \dist_w(v,t,\tau)
 \]
 With a potential fulfilling this property, A* is guaranteed to have found the shortest path once the target vertex is settled, even if the potential is not feasible.
-This is because every vertex on the shortest path must have a queue key less or equal than the target.
+This is because every vertex on the shortest path must have a queue key less or equal than the target when discovered with optimal distance.
 Suppose for contradiction, the target vertex would be settled with distance $d$ which is greater than the shortest distance.
 But because of the lower bound property, every vertex on the shortest path will have a queue key smaller than $d$ as soon as it was discovered with its shortest distance.
 By induction, this must happen for all vertices on the shortest path.
@@ -962,6 +961,8 @@ Assume we are running A* to answer a query from $s$ to $t$ with departure $\tdep
 Clearly, A* will never invoke the potential $\pi_t(v, \tau)$ of a vertex $v$ with $\tau < \dist(s,v,\tdep)$.
 Therefore, it is sufficient to guarantee the strong FIFO property at vertex $v$ and the feasibility property for edge $vw$ for $\tau \geq \dist(s,v,\tdep)$.
 For the lower bound property it even suffices to guarantee it only at exactly $\tau = \dist(s,v,\tdep)$.
+When a vertex is discovered with suboptimal distance, the queue key may be arbitrarily larger -- but never smaller because of the FIFO property.
+Therefore, the inductive argument still applies and all vertices on the shortest path must have been discovered before the target is settled.
 
 \section{Optimizations}\label{sec:appendix:optimizations}
 
