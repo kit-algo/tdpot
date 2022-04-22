@@ -198,10 +198,11 @@ We consider this too slow for practical applications.
 
 In this work, we introduce a time-dependent generalization of A* potentials.
 We present two simple extensions of Lazy RPHAST which realize a time-dependent potential function and discuss how to apply them to queries in a setting which combines live and predicted traffic.
-An extensive evaluation confirms the practical applicability of our potentials.
-Queries incorporating both predicted and current traffic can be answered fast enough to enable interactive applications.
+An extensive evaluation confirms the effectiveness of our potentials.
+Queries incorporating both predicted and current traffic can be answered within a few tens of milliseconds.
 Live traffic updates can be integrated within a fraction of a minute.
 Our time-dependent potentials are up to an order of magnitude faster than CH-Potentials and about two orders of magnitude faster than Dijkstra's algorithm.
+To the best of our knowledge, this makes our approach the first to achieve interactive query performance while allowing fast updates in this setting.
 % Introduce A* with TDPot
 % Introduce 2 TDPots
 % Show how to apply them to live traffic
@@ -266,7 +267,6 @@ In this work, we use a time-dependent generalization $\pi_t : V \to (T \to \math
 This allows us to obtain tighter estimates and enables faster queries.
 % Analogue to classical potentials, t
 There are three important properties of time-dependent potentials to consider for the correctness of A*:
-
 \begin{itemize}
   \item Strong First-In First-Out (FIFO): $\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon$ for $v \in V$, $\tau > \dist_w(s,u,\tdep)$ and $\epsilon > 0$.
         This ensures that queue keys increase monotonically with the distance from $s$.
