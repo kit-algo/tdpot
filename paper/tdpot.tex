@@ -445,8 +445,9 @@ See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 \subparagraph{Correctness.}
 Estimates obtained by IMP are lower bounds of the actual time-dependent shortest distances.
 This directly follows from the correctness of the CATCHUp preprocessing and the Lazy RPHAST algorithm.
-Also, they do satisfy the strong FIFO property because for any given single query, the estimates are constant.
+Also, they do satisfy the strong FIFO property because, for any given single query, the estimates are constant.
 However, they are not feasible due to the piecewise constant approximation schema.
+We could not observe any practical negative consequences of this, though.
 
 \subsection{Compression}\label{sec:compression}
 
@@ -590,7 +591,7 @@ Both our approaches are quite expensive in terms of memory consumption, but this
 
 Introducing live traffic decreases the quality of the estimates and thus increases search space sizes and running times.
 For IMP, this increases running times by roughly a factor of two.
-However, even with heavy rush hour traffic, IMP is still more than 90 times faster than Dijkstra's algorithm.
+Even with heavy rush hour traffic, IMP is still more than 90 times faster than Dijkstra's algorithm.
 Surprisingly, for CCH-Potentials and MMP, this scenario seems easier to handle than light midday traffic.
 This actually is an effect of the \emph{predicted} traffic.
 It also has a strong influence on the performance of CCH-Potentials and MMP depending on the departure time.
@@ -967,7 +968,8 @@ All vertices on the shortest path will be traversed before the target is settled
 
 \section{Optimizations}\label{sec:appendix:optimizations}
 
-Before discussing further optimizations, we first need to introduce some additional preliminaries.
+\subsection{Perfect Customization}
+
 Recall that shortcut edges $uv \in E^+$ allow skipping over paths of lower-ranked vertices.
 We now denote the length of the shortest such path by $\dist^{\prec}_w(u,v) = w^+(uv)$.
 In the main part of the paper, we stated that the CCH customization yields the appropriate weight function $w^+$ for the full augmented graph $G^+$ with $w^+(uv) = \dist^{\prec}(u,v)$.
@@ -984,8 +986,7 @@ However, a decent number of unnecessary edges can be identified by running the t
 Each edge $uv$ where $\dist_w(u,v,\tau) \leq b^*_{\max}(uv) < b^+_{\min}(uv) \leq \dist^{\prec}_w(u,v,\tau)$ can be removed.
 We utilize this insight for our time-dependent potentials.
 
-\subparagraph{Multi-Metric Potentials.}
-During the update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
+During the MMP update phase, we also run the perfect customization for the upper bound and obtain $\comb^*_{\max}$.
 This allows us to remove unnecessary edges and accelerate the query phase.
 We remove edges $uv$ where $\dist^{\prec}_c(u,v) \geq l_{[0:00, 24:00]}^+(uv) > \comb^*_{\max}(uv) \geq \dist_c(u,v)$ for all weight functions.
 We could remove even more edges if we were to check the condition for every lower bound weight function individually.
@@ -993,22 +994,41 @@ However, in this case, we could not reuse the same reduced augmented graph topol
 As this would roughly double memory consumption, we only remove edges that can be removed for all weight functions.
 We parallelize the reduced graph constructions as described in~\cite{bsw-rttau-19}.
 
-% The tightness of MMP can be improved further by switching to weight functions for smaller intervals during the progress of the query.
-% When initializing the potential, we select, beside $[\tau_i', \tau_i''] \supseteq [\tdep,\tmax]$, additional intervals $[\tau_j', \tau_j''] \subset [\tau_i', \tau_i'']$ with $\tau_j'' \geq \tmax$.
-% When evaluating the potential of a vertex at instant $\tau$, we use the weight function with the shortest associated interval which still includes $\tau$.
-% However, running Lazy RPHAST separately for each of these weight functions would be too expensive.
-% Therefore, we modify the DFS part of Lazy RPHAST to track, beside the distances $\mathtt{D}[u]$, also the weight function $\mathtt{W}[u]$ which was used.
-% Then, an already memoized distance $\mathtt{D}[v]$ for vertex $v$ can be reused if the interval associated with $\mathtt{W}[v]$ is a superset of the best interval for $\tau$.
-% By passing $\tau$ unmodified to recursive invocations, we can maintain the invariant that if $\mathtt{D}[v]$ is final and valid for $\tau$, also all vertices in the CH search space of $v$ will have a valid lower bound for at least time $\tau$.
-
-\subparagraph{Interval-Minimum Potentials.}
-Similar to the MMP, we can identify unnecessary edges in the update phase and construct a smaller reduced augmented graph.
+For IMP, we can employ the same technique.
+We identify unnecessary edges in the update phase and construct a smaller reduced augmented graph.
 This accelerates queries.
 Again we use the perfect customization to obtain $\comb^*_{\max}$ during the update phase and remove edges $uv$ where $\comb^*_{\max}(uv) < b^+_{\min}(uv)$.% derive from sources when predicted upper bound valid again (this is the reason why not reduced in preprocessing)
 % reduced graph bounds
 % reduced graph buckets by predicted bounds
 % bound switching
 % evaluation time metric pruning
+
+\subsection{Metric Switching}
+
+The tightness of MMP can be improved further by switching to weight functions for smaller intervals as the query progresses.
+When initializing the potential, we select, beside $[\tau_i', \tau_i''] \supseteq [\tdep,\tmax]$, additional intervals $[\tau_j', \tau_j''] \subset [\tau_i', \tau_i'']$ with $\tau_j'' \geq \tmax$.
+When evaluating the potential of a vertex at instant $\tau$, we use the weight function with the shortest associated interval that still includes $\tau$.
+However, running Lazy RPHAST separately for each of these weight functions would be too expensive.
+Therefore, we modify the DFS part of Lazy RPHAST to track, besides the distances $\mathtt{D}[u]$, also the weight function $\mathtt{W}[u]$ which was used.
+Then, an already memoized distance $\mathtt{D}[v]$ for vertex $v$ can be reused if the interval associated with $\mathtt{W}[v]$ is a superset of the best interval for $\tau$.
+We pass the $\tau$ parameter unmodified to recursive invocations.
+Thus, we maintain the invariant that if $\mathtt{D}[v]$ is final and valid for $\tau$, also all vertices in the CH search space of $v$ will have a valid lower bound for an interval that includes $\tau$.
+Therefore, we will only underestimate lower bounds.
+The lower bound property is preserved.
+The strong FIFO property is preserved, too.
+Potential functions are now piecewise constant with only increasing jumps.
+However, this breaks the feasibility property.
+We could not observe any practical negative consequences of this, though.
+
+For IMP, we employ a similar approach.
+We use the potential evaluation time argument $\tau$ to tighten the arrival intervals and reduce the number of buckets to look up.
+When evaluating the potential of a vertex $v$ at instant $\tau$, we still obtain the arrival interval $[\tau_{\min}, \tau_{\max}]$ using the AILR.
+Typically, $\tau$ will be greater than $\tau_{\min}$.
+Therefore, we can avoid looking up unnecessary bucket entries by only evaluating $[\max(\tau_{\min}, \tau), \tau_{\max}]$.
+We track the respective bucket of $\tau$ in $\mathtt{B}[v]$.
+When the potential is evaluated again with a possibly smaller $\tau$, we check if the respective bucket is smaller than $\mathtt{B}[v]$ to determine if the memoized distance can be reused.
+If not, we reevaluate outgoing edges with the additional buckets and update $\mathtt{B}[v]$ accordingly.
+We pass the $\tau$ parameter unmodified to recursive invocations.
 
 \section{Parallelization of Compression}\label{sec:appendix:parallelization}
 
