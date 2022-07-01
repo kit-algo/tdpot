@@ -1,5 +1,5 @@
 
-\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate,anonymous]{lipics-v2021}
+\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}
 %This is a template for producing LIPIcs articles. 
 %See lipics-v2021-authors-guidelines.pdf for further information.
 %for A4 paper format use option "a4paper", for US-letter use option "letterpaper"
@@ -12,8 +12,8 @@
 %for enabling a two-column layout for the author/affilation part (only applicable for > 6 authors), use "authorcolumns"
 %for producing a PDF according the PDF/A standard, add "pdfa"
 
-%\pdfoutput=1 %uncomment to ensure pdflatex processing (mandatatory e.g. to submit to arXiv)
-%\hideLIPIcs  %uncomment to remove references to LIPIcs series (logo, DOI, ...), e.g. when preparing a pre-final version to be uploaded to arXiv or another public repository
+\pdfoutput=1 %uncomment to ensure pdflatex processing (mandatatory e.g. to submit to arXiv)
+\hideLIPIcs  %uncomment to remove references to LIPIcs series (logo, DOI, ...), e.g. when preparing a pre-final version to be uploaded to arXiv or another public repository
 
 %\graphicspath{{./graphics/}}%helpful if your graphic files are in another directory
 
@@ -43,31 +43,35 @@
 % \category{} %optional, e.g. invited paper
 
 % \relatedversion{} %optional, e.g. full version hosted on arXiv, HAL, or other respository/website
-%\relatedversiondetails[linktext={opt. text shown instead of the URL}, cite=DBLP:books/mk/GrayR93]{Classification (e.g. Full Version, Extended Version, Previous Version}{URL to related version} %linktext and cite are optional
+\relatedversiondetails[cite=wz-cplttdap-22]{Conference Paper}{10.4230/LIPIcs.ESA.2022.9} %linktext and cite are optional
+% \relatedversiondetails[linktext={opt. text shown instead of the URL}, cite=DBLP:books/mk/GrayR93]{Full Version}{URL to related version} %linktext and cite are optional
 
 %\supplement{}%optional, e.g. related research data, source code, ... hosted on a repository like zenodo, figshare, GitHub, ...
 %\supplementdetails[linktext={opt. text shown instead of the URL}, cite=DBLP:books/mk/GrayR93, subcategory={Description, Subcategory}, swhid={Software Heritage Identifier}]{General Classification (e.g. Software, Dataset, Model, ...)}{URL to related version} %linktext, cite, and subcategory are optional
 
 %\funding{(Optional) general funding statement \dots}%optional, to capture a funding statement, which applies to all authors. Please enter author specific funding statements as fifth argument of the \author macro.
 
-\acknowledgements{I want to thank \dots}%optional
+\acknowledgements{
+We want to thank Jonas Sauer for many helpful discussions on algorithmic ideas and proofreading of drafts of this paper.
+Further, we also want to thank the anonymous reviewers for their helpful comments.
+}
 
-%\nolinenumbers %uncomment to disable line numbering
+\nolinenumbers %uncomment to disable line numbering
 
 
 
 %Editor-only macros:: begin (do not touch as author)%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\EventEditors{John Q. Open and Joan R. Access}
-\EventNoEds{2}
-\EventLongTitle{42nd Conference on Very Important Topics (CVIT 2016)}
-\EventShortTitle{CVIT 2016}
-\EventAcronym{CVIT}
-\EventYear{2016}
-\EventDate{December 24--27, 2016}
-\EventLocation{Little Whinging, United Kingdom}
+\EventEditors{Shiri Chechik, Gonzalo Navarro, Eva Rotenberg, and Grzegorz Herman}
+\EventNoEds{4}
+\EventLongTitle{30th Annual European Symposium on Algorithms (ESA 2022)}
+\EventShortTitle{ESA 2022}
+\EventAcronym{ESA}
+\EventYear{2022}
+\EventDate{September 5--9, 2022}
+\EventLocation{Berlin/Potsdam, Germany}
 \EventLogo{}
-\SeriesVolume{42}
-\ArticleNo{23}
+\SeriesVolume{244}
+\ArticleNo{9}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newcommand*{\pred}{p}
@@ -176,6 +180,8 @@ Also, TD-CRP does not support path unpacking.
 CATCHUp~\cite{swz-sfert-21} adapts CCH to the time-dependent setting and has fast and exact queries with significantly reduced memory consumption.
 While it has a customization phase, running it takes significantly longer than a traditional CCH or CRP customization.
 On the networks used in this paper, a CATCHUp customization may even take hours, which is too slow for a setting with live traffic updates.
+Time-dependent Sampling (TDS)~\cite{strasser:OASIcs:2017:7897} is another CH-based approach.
+While TDS does support both predicted and dynamic traffic information, it cannot guarantee exactness.
 
 ALT~\cite{gh-cspas-05,gw-cppsp-05} is an early A*-based speedup technique for routing in road networks.
 It combines precomputed distances to a few \emph{landmark} vertices with the triangle inequality to obtain distance estimates to the target vertex.
@@ -219,13 +225,54 @@ When it is clear from the context that we are writing about constant functions, 
 The reversed graph $\overleftarrow{G} = (V, \overleftarrow{E})$ contains a reversed edge $vu$ for every edge $uv \in E$.
 In this paper, we only need time-independent corresponding reversed weight functions.
 Therefore, we define $\overleftarrow{w}(vu) = w(uv)$.
-The travel time of a path $P = (v_1,\dots,v_k)$ can be obtained by successively evaluating travel times of the edges: $w(P, \tau) = w(v_1 v_2, \tau) + w((v_2,\dots,v_k), \tau + w(v_1 v_2, \tau))$.
-We denote the travel time of the shortest path between vertices $s$ and $t$ for the departure time $\tdep$ as $\dist_w(s,t,\tdep)$.
+The travel time of a path $P = (v_1,\dots,v_k)$ is defined recursively $w(P, \tau) = w(v_1 v_2, \tau) + w((v_2,\dots,v_k), \tau + w(v_1 v_2, \tau))$ with the base case of an empty path having a travel time of zero.
+A path's travel time can be obtained by successively evaluating travel times of the edges of the path.
+We denote the travel time of a \emph{shortest} path between vertices $s$ and $t$ for the departure time $\tdep$ as $\dist_w(s,t,\tdep)$.
 We assume that all travel time functions adhere to the \emph{First-In First-Out} (FIFO) property, i.e.\ departing later may never lead to an earlier arrival.
 Formally stated, this means $\tau + w(\tau) \leq \tau + \epsilon + w(\tau + \epsilon)$ for any $\epsilon \geq 0$.
-With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{or-tnp-89}.
+With non-FIFO travel time functions, the shortest path problem becomes \textsf{NP}-hard~\cite{or-tnp-89,z-nphsp-22}.
 
 \subsection{Problem Model}
+
+\begin{figure}
+\centering
+\begin{tikzpicture}[]
+%axis
+\draw[->, thick] (0,1) -- (8,1);
+\draw[->, thick] (0,1) -- (0,4);
+
+\draw[] (1,4) -- (1,1cm-3pt) node[anchor=north] {$\tnow$};
+\draw[] (4,4) -- (4,1cm-3pt) node[anchor=north] {$\tend(e)$};
+
+%labels
+\node[] () at (8.35, 1) { $\tau$ };
+\node[] () at (0, 4.35) { $\comb(e, \tau)$ };
+
+% function
+\draw[very thick] (0,1.5) -- (0.5,1.5) -- (1, 2.2);
+\draw[very thick,dotted] (1,2.2) -- (1.5,2.2) -- (2,3) -- (3,2.5) -- (3.7, 2) -- (4,2);
+\draw[very thick] (1.84375,2.75) -- (2,3) -- (2.5,2.75);
+\draw[very thick] (4,2) -- (4.2,2) -- (5,2.5) -- (5.5,2.5) -- (6,2.1) -- (6.4,2.1) -- (7.5,1.5) node[anchor=west] {$\pred(e)$};
+
+\draw[very thick,red] (1.84375,2.75) -- (1,2.75) node[anchor=east,red] {$\live(e)$};
+\draw[very thick,red,dotted] (1.84375,2.75) -- (2.5,2.75);
+\draw[very thick,red] (2.5,2.75) -- (3.25,2.75);
+\draw[very thick,red,dotted] (3.25,2.75) -- (4,2.75);
+
+\draw[very thick,dotted,blue] (3.25,2.75) -- (2.5,3.5) node[anchor=south,blue, align=center] {$\pred(e, \tend(e))$\\$+ \tend(e) - \tau$};
+\draw[very thick,blue] (3.25,2.75) -- (4,2);
+\end{tikzpicture}
+\caption{
+Combined travel time function $\comb(e, \tau) = \max(\pred(e, \tau), \min(\live(e), \pred(e, \tend(e)) + \tend(e) - \tau))$ with both predicted and live traffic information.
+The predicted traffic $\pred(e)$ is indicated in black.
+The live travel time $\live(e)$ with expected end $\tend(e)$ is depicted in red.
+The switch back to the predicted function is colored in blue.
+The solid line indicates the combined function $\comb(e)$ for the current day.
+For later days, only $\pred$ will be used.
+Dotted lines only serve the purpose of visualization.
+}
+\label{fig:combined_tt}
+\end{figure}
 
 % phases
 We consider an application model with three phases.
@@ -233,7 +280,8 @@ During the \emph{preprocessing} phase, the graph $G=(V,E)$ and a weight function
 Predicted travel time functions are periodic piecewise linear functions represented by a sequence of breakpoints covering one day.
 A preprocessing algorithm may now precompute auxiliary data, which may take several hours.
 % Preprocessing should still be fast enough to rerun it daily.
-In the \emph{update} phase, a weight function $\live$ of currently observed (constant) live travel times are given for the current moment $\tnow$.
+In the \emph{update} phase, a weight function $\live$ of currently observed live travel times are given for the current moment $\tnow$.
+These live travel times are time-independent and can be represented by a single scalar value.
 Further, each edge $e$ has a point in time $\tend(e)$ when we switch back to the predicted travel time.
 For edges without live traffic data, we set $\tend(e) = \tnow$.
 We assume that traffic predictions are conservative estimates and that live traffic will only be slower than the predicted traffic due to accidents and other traffic incidents, i.e.\ $\pred(e, \tnow) < \live(e)$.
@@ -242,7 +290,20 @@ It follows that $\pred(e, \tau) \leq \comb(e, \tau)$.
 The update phase will be repeated frequently and should therefore be as fast as possible.
 % We do not call this phase \emph{customization} because we use customization algorithms from CCH and CATCHUp during both the preprocessing and the update phases.
 During the final \emph{query} phase, many shortest path queries $(s,t,\tdep)$ where $\tdep \geq \tnow$ should be answered as quickly as possible by obtaining a path $P = (s,\dots,t)$ that minimizes $\comb(P, \tdep)$.
-We discuss this model further in Appendix~\ref{sec:appendix:model}.
+Figure~\ref{fig:combined_tt} depicts an example of such a combined travel time function.
+
+Our model has two important restrictions.
+First, the dynamic real-time traffic information $\live$ is handled separately from the traffic predictions $\pred$.
+Fast updates to the predicted traffic functions $\pred$ are not the goal of our work.
+While this might seem less flexible than dynamic traffic predictions $\pred$, we believe that our model is actually more practical.
+This is because the traffic predictions are \emph{periodic} functions.
+But live traffic incidents are inherently tied to the current moment and are not expected to repeat in 24 hours.
+Second, our model assumes predicted traffic to be a lower bound of the real-time traffic.
+If the observed live travel time were faster than the predicted travel time, the live travel time would be ignored.
+While this a severe restriction from a theoretical perspective, it is only a minor limitation for our practical problem.
+Live traffic should account for unexpected traffic events which will almost always only make traffic worse.
+If the live traffic is frequently better than the predicted traffic, the predictions should be adjusted at some point.
+We discuss these restrictions further and compare them to similar problem models in related work in Appendix~\ref{sec:appendix:model}.
 
 \subsection{Fundamental Algorithms}
 
@@ -259,33 +320,14 @@ We denote visited vertices as the \emph{search space} of a query.
 
 A*~\cite{hnr-afbhd-68} is a goal-directed extension of Dijkstra's algorithm.
 It applies a \emph{potential} function $\pi_t$ which maps vertices to an estimate of the remaining distance to $t$.
-% A*~\cite{hnr-afbhd-68} is an extension of Dijkstra's algorithm where the search is guided towards the target via a potential function $\pi_t$ which maps vertices to an estimate of the remaining distance to $t$.
 This estimate is added to the queue key.
 Thus, vertices closer to the target are visited earlier, and the search space becomes smaller.
-%
-In this work, we use a time-dependent generalization $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$ of A* potentials, i.e.\ estimates are a function of the time.
-This allows us to obtain tighter estimates and enables faster queries.
-% Analogue to classical potentials, t
-There are three important properties of time-dependent potentials to consider for the correctness of A*:
-\begin{itemize}
-  \item Strong First-In First-Out (FIFO): $\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon$ for $v \in V$, $\tau > \dist_w(s,u,\tdep)$ and $\epsilon > 0$.
-        This ensures that queue keys increase monotonically with the distance from $s$.
-        % This property has no time-independent equivalent because it trivially holds in this case.
-  \item Feasibility: $w(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau > \dist_w(s,u,\tdep)$.
-        A* can be analyzed as an equivalent run of Dijkstra's algorithm with a modified weight function derived from the input weights and the potentials.
-        With feasibility, these modified weights are non-negative, which implies correctness and polynomial running time.
-        % When $\pi_t(t, \tau) = 0$, feasibility also implies the lower bound property.
-        However, feasibility is not strictly necessary.
-  \item Lower bound: $\pi_t(v, \tau) \leq \dist_w(v,t,\tau)$ for every vertex $v \in V$ and time $\tau = \dist_w(s,v,\tdep)$.
-        This ensures that the search has found the correct distance once the target vertex is settled.
-        This is also sufficient for correctness.
-        However, without feasibility, A* may settle vertices multiple times.
-        In theory, this can lead to an exponential running time.
-\end{itemize}
-
-In Appendix~\ref{sec:appendix:correctness} we discuss these properties in detail and prove the correctness.
-Note that these properties only need to hold for specific times $\tau$, not all possible times of the day.
-Our proposed potentials heavily rely on this and only compute data for the specific times necessary to answer a query correctly.
+It can be guaranteed that A* has computed the shortest distance once $t$ is settled when the estimates of the potential function are lower bounds of the remaining distances.
+However, with only lower bound potentials, the theoretical worst case running time of A* is exponential.
+Therefore, a stronger correctness property is often used.
+A potential function is called \emph{feasible} if $w(uv) - \pi_t(u) + \pi_t(v) \geq 0$ for any edge $uv \in E$.
+Feasibility guarantees correctness and polynomial running time.
+When the potential of the target is zero, i.e.\ $\pi_t(t) = 0$, it also implies the lower bound property.
 
 % \subsection{Contraction Hierarchies}
 
@@ -326,7 +368,7 @@ The customization can be parallelized efficiently~\cite{bsw-rttau-19} and takes 
 \label{algo:lazy_rphast}
 \end{algorithm2e}
 
-\emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a (C)CH query variant to incrementally compute distances from many sources toward a common target.
+\emph{Lazy RPHAST}~\cite{strasser_et_al:LIPIcs.SEA.2021.6} is a CH query variant to incrementally compute distances from many sources toward a common target.
 The first step is to run Dijkstra's algorithm on $\gchd$ from $t$, similarly to a regular CH query.
 The second Dijkstra search is replaced with a recursive depth-first search (DFS) which memoizes distances.
 Algorithm~\ref{algo:lazy_rphast} depicts this routine which will be called for all sources.
@@ -334,30 +376,58 @@ If the distance of a vertex $u$ was previously computed, the routine terminates 
 Otherwise, the distance for all upward neighbors $v$ is obtained recursively.
 The final distance is the minimum over the path distances $w^+(uv) + \mathtt{D}[v]$ via the upward neighbors $v$ and the distance possibly found in the backward search $\mathtt{D}^{\downarrow}[u]$.
 Using a DFS to compute shortest distances works because $\gchu$ is a directed acyclic graph.
-Using the distance to $t$ obtained by Lazy RPHAST as an A* potential is called \emph{(C)CH-Potentials}.
+Using the distance to $t$ obtained by Lazy RPHAST as an A* potential is called \emph{CH-Potentials}.
+Just like a regular CH query, Lazy RPHAST can be used on CCH without modifications.
 In~\cite{strasser_et_al:LIPIcs.SEA.2021.6} additional optimizations for A* are discussed which we also utilize.
 The goal is to reduce the impact of the potential evaluation overhead by avoiding unnecessary potential evaluations, for example for chains of degree-two vertices.
 
 \section{Time-Dependent A* Potentials}
 
-In this section, we propose two time-dependent A* potentials.
+We now propose a time-dependent generalization $\pi_t : V \to (T \to \mathbb{Z}^{\geq 0})$ of A* potentials, i.e.\ estimates are a function of the time.
+This allows us to obtain tighter estimates and enables faster queries.
+Analogue to classical potentials, there are properties of time-dependent potentials to consider for the correctness of A*:
+\begin{itemize}
+  \item Strong First-In First-Out (FIFO): $\pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon$ for $v \in V$, $\tau > \dist_w(s,u,\tdep)$ and $\epsilon > 0$.
+        This ensures that queue keys increase monotonically with the distance from $s$.
+        This property has no time-independent equivalent because it holds trivially in this case.
+  \item Feasibility: $w(uv, \tau) + \pi_t(v, \tau + w(uv, \tau)) - \pi_t(u, \tau) \geq 0$ for all edges $uv \in E$ and times $\tau > \dist_w(s,u,\tdep)$.
+        A* can be analyzed as an equivalent run of Dijkstra's algorithm with a modified weight function derived from the input weights and the potentials.
+        With feasibility, these modified weights are non-negative, which implies correctness and polynomial running time.
+        When $\pi_t(t, \tau) = 0$, feasibility also implies the lower bound property.
+        However, feasibility is not strictly necessary to guarantee correctness.
+  \item Lower bound: $\pi_t(v, \tau) \leq \dist_w(v,t,\tau)$ for every vertex $v \in V$ and time $\tau = \dist_w(s,v,\tdep)$.
+        This ensures that the search has found the correct distance once the target vertex is settled.
+        This is also sufficient for correctness.
+        However, without feasibility, A* may settle vertices multiple times.
+        In theory, this can lead to an exponential running time.
+\end{itemize}
+
+In Appendix~\ref{sec:appendix:correctness} we discuss these properties in detail and prove the correctness.
+Note that these properties only need to hold for specific times $\tau$, not all possible times of the day.
+Our practical potentials heavily rely on this and only compute data for the specific times necessary to answer a query correctly.
+
+In the following, we present two practical realizations of time-dependent A* potentials.
 Both are extensions of Lazy RPHAST.
 Lazy RPHAST/CH-Potentials is already a very efficient potential and obtains exact distances for scalar lower bound weights, i.e.\ the tightest possible estimates with a time-independent potential definition.
 To outperform CH-Potentials, on the one hand, we have to obtain significantly tighter estimates.
 On the other hand, we also must avoid the potential evaluation becoming too expensive.
 Therefore, we avoid costly operations on functions and work with scalar values as much as possible.
-% As a result, even though our potentials are time-dependent, computed estimates during an individual query will \emph{not} change depending on the visit time.
+As a result, even though our potentials are time-dependent, computed estimates during a single query usually will \emph{not} change depending on the visit time of a vertex.
 
 \subsection{Multi-Metric Potentials}
 
-Let $(s,t,\tdep)$ be a query and $\tmax = \tdep + \dist_c(s,t,\tdep)$ the optimal arrival time at the target.
-Consider any $\tau' \leq \tdep$, $\tau'' \geq \tmax$ and the weight function $l[\tau', \tau''](e) := \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
+Let $(s,t,\tdep)$ be a query and $\tmax$ an upper bound on the optimal arrival time at the target.
+Consider any $\tau' \leq \tdep$, $\tmax \leq \tau''$ and the weight function $l[\tau', \tau''](e) := \min_{\tau' \leq \tau \leq \tau''}\pred(e, \tau)$. % where $\pred$ are the predicted travel times.
 Clearly, $\dist_{l[\tau', \tau'']}(v,t)$ provides lower bound estimates of distances to the target vertex during the time relevant for this query.
 If $\tau'$ and $\tau''$ are close to $\tdep$ and $\tmax$ and, if the difference between $\tau'$ and $\tau''$ is not too big, the estimates will be significantly tighter than global lower bound distances.
 The \emph{Multi-Metric Potentials} (MMP) approach is based on this observation.
 Instead of using a single potential based on a global lower bound valid for the entire time, we process multiple lower bound weight functions for different time intervals.
 At query time, we then select an appropriate weight function.
+The upper bound $\tmax$ is computed with a time-independent CCH query on a scalar upper bound function $\comb^+_{\max}$ computed during the update phase.
 Efficiently computing distances with respect to the selected weight function is done with Lazy RPHAST.
+Therefore, no time-dependent computations need to be performed to evaluate this potential function.
+MMP only depend on the departure time of the query but not of the potential evaluation time.
+Still, MMP will be significantly tighter than any time-independent potential can be.
 
 \subparagraph{Phase Details.}
 The first step of the preprocessing for this potential is to perform the regular CCH preprocessing, i.e.\ compute an importance ordering and construct the unweighted augmented graph.
@@ -378,7 +448,7 @@ Further, we extract an upper bound weight function $\comb_{\max}$ which is valid
 
 The query starts with a classical CCH query on the customized upper bound $\comb^+_{\max}$ to obtain a pessimistic estimate of $\tmax$.
 We then select the smallest interval $[\tau_i', \tau_i'']$ such that $[\tdep,\tmax] \subseteq [\tau_i', \tau_i'']$.
-Running Lazy RPHAST on $G^*_l$ with the customized weight function $l[\tau_i', \tau_i'']^+$ yields the desired potential function.
+Running Lazy RPHAST on $G^+_l$ with the customized weight function $l[\tau_i', \tau_i'']^+$ yields the desired potential function.
 See Appendix~\ref{sec:appendix:optimizations} for additional optimizations.
 
 \subparagraph{Correctness.}
@@ -478,7 +548,7 @@ The minimum difference is tracked in an atomic variable.
 Hyperthreading was disabled and parallel experiments use 16 threads.
 We implemented our algorithms in Rust\footnote{
 % The code for this paper and all experiments is available at \url{https://github.com/kit-algo/tdpot}
-Our code and experiment scripts are available at \url{https://shorturl.at/vBD05} (shortened for anonymity)
+Our code and experiment scripts are available at \url{https://github.com/kit-algo/tdpot}
 } and compiled them with \texttt{rustc 1.61.0-nightly (c84f39e6c 2022-03-20)} in the release profile with the \texttt{target-cpu=native} option.
 % To compile InertialFlowCutter and RoutingKit which are written in C++, we use GCC~10.3.0 using optimization level 3 and the -march=native option.
 
@@ -553,12 +623,16 @@ For queries with only predicted traffic, we pick $\tdep$ uniformly at random.
 When using live traffic, we set $\tdep = \tnow$.
 To evaluate the performance of the preprocessing and update phases, we run them 10 and 100 times, respectively.
 Preprocessing and update phases utilize all cores using 16 threads.
-%
+
 % \subparagraph{Algorithms.}
 % In our experiments, we run A* with different potentials.
-% We denote Multi-Metric Potentials by MMP and Interval-Minimum Potential by IMP.
-We compare our time-dependent potentials MMP and IMP against time-independent CCH-Potentials.
-It is the only other speedup technique we are aware of that supports our problem model.
+% We denote Multi-Metric Potentials by MMP and Interval-Minimum Potentials by IMP.
+We compare our time-dependent potentials MMP and IMP against time-independent CH-Potentials algorithm realized on CCH.
+Therefore, we denote this approach as CCH-Potentials.
+All three potentials use the same CCH vertex order and augmented graph.
+CCH-Potentials provide heuristic estimates based on a lower bound without any real-time or predicted traffic.
+Thus, no update phase is necessary to integrate real-time traffic updates.
+It is the only other speedup technique we are aware of that supports exact queries for our problem model.
 Dijkstra's algorithm without any acceleration is our baseline.
 
 \begin{table}
@@ -596,7 +670,7 @@ Surprisingly, for CCH-Potentials and MMP, this scenario seems easier to handle t
 This actually is an effect of the \emph{predicted} traffic.
 It also has a strong influence on the performance of CCH-Potentials and MMP depending on the departure time.
 
-\begin{figure}[tbh]
+\begin{figure}[tb]
 \centering
 \includegraphics[width=\linewidth]{fig/perf_over_day.pdf}
 \caption{
@@ -819,58 +893,20 @@ For future work, we would like to apply our time-dependent potentials to other e
 
 \section{Further Discussion of Traffic Model}\label{sec:appendix:model}
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[]
-%axis
-\draw[->, thick] (0,1) -- (8,1);
-\draw[->, thick] (0,1) -- (0,4);
-
-\draw[] (1,4) -- (1,1cm-3pt) node[anchor=north] {$\tnow$};
-\draw[] (4,4) -- (4,1cm-3pt) node[anchor=north] {$\tend(e)$};
-
-%labels
-\node[] () at (8.35, 1) { $\tau$ };
-\node[] () at (0, 4.35) { $\comb(e, \tau)$ };
-
-% function
-\draw[very thick] (0,1.5) -- (0.5,1.5) -- (1, 2.2);
-\draw[very thick,dotted] (1,2.2) -- (1.5,2.2) -- (2,3) -- (3,2.5) -- (3.7, 2) -- (4,2);
-\draw[very thick] (1.84375,2.75) -- (2,3) -- (2.5,2.75);
-\draw[very thick] (4,2) -- (4.2,2) -- (5,2.5) -- (5.5,2.5) -- (6,2.1) -- (6.4,2.1) -- (7.5,1.5) node[anchor=west] {$\pred(e)$};
-
-\draw[very thick,red] (1.84375,2.75) -- (1,2.75) node[anchor=east,red] {$\live(e)$};
-\draw[very thick,red,dotted] (1.84375,2.75) -- (2.5,2.75);
-\draw[very thick,red] (2.5,2.75) -- (3.25,2.75);
-\draw[very thick,red,dotted] (3.25,2.75) -- (4,2.75);
-
-\draw[very thick,dotted,blue] (3.25,2.75) -- (2.5,3.5) node[anchor=south,blue, align=center] {$\pred(e, \tend(e))$\\$+ \tend(e) - \tau$};
-\draw[very thick,blue] (3.25,2.75) -- (4,2);
-\end{tikzpicture}
-\caption{
-Combined travel time function $\comb(e, \tau) = \max(\pred(e, \tau), \min(\live(e), \pred(e, \tend(e)) + \tend(e) - \tau))$ with both predicted and live traffic information.
-The predicted traffic $\pred(e)$ is indicated in black.
-The live travel time $\live(e)$ with expected end $\tend(e)$ is depicted in red.
-The switch back to the predicted function is colored in blue.
-The solid line indicates the combined function $\comb(e)$ for the current day.
-For later days, only $\pred$ will be used.
-Dotted lines only serve the purpose of visualization.
-}
-\label{fig:combined_tt}
-\end{figure}
-
-Figure~\ref{fig:combined_tt} depicts an example of a combined travel time function.
-We believe that this model is suited very well for practical navigation applications, even though it might not seem as flexible as supporting arbitrary updates to the predictions $\pred$.
+In~\cite{dn-crdtd-12}, ALT-based algorithms supporting dynamic updates to $\pred$ are discussed.
+This might seem more flexible than our model.
+However, we believe that our model is, in fact, more practical.
 The problem with live traffic updates to $\pred$ is that these predictions are assumed to be periodic.
 But live traffic incidents are inherently tied to the current moment and are not expected to repeat in 24 hours.
 
-In~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, a similar model for combined traffic was proposed.
-Our model slightly differs in two ways.
-First, in our model, the combined function equals the predicted function from moment $\tend(e)$ on, while in~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function has the live weight until $\tend(e)$ and only then starts to approach the predicted function again.
+To the best of our knowledge, the first model for combined traffic separating predictions and real-time information was proposed in~\cite{strasser:OASIcs:2017:7897}.
+This approach was also employed in~\cite{strasser_et_al:LIPIcs.SEA.2021.6} and is quite similar to ours.
+Our model only slightly differs in two ways.
+First, in our model, the combined function equals the predicted function from moment $\tend(e)$ on, while in~\cite{strasser:OASIcs:2017:7897}, the combined function has the live weight until $\tend(e)$ and only then starts to approach the predicted function again.
 This allows us to handle blocked edges more realistically.
-In the case of $l(e) = \infty$, i.e.\ the edge is blocked, our combined travel time function for the edge corresponds to waiting until the edge opens up at $\tend(e)$.
-With the model from~\cite{strasser_et_al:LIPIcs.SEA.2021.6}, the combined function would decrease from $\infty$ towards the predicted function but would never reach it and thus stay completely blocked.
-Second, in our model, we use $\max(p(e, \tau), \live(e))$, while the authors of~\cite{strasser_et_al:LIPIcs.SEA.2021.6} use $\max(p_{\min}(e), \live(e))$, i.e.\ our model does not allow the live travel time to be less than the predicted travel time.
+In the case of $\live(e) = \infty$, i.e.\ the edge is blocked, our combined travel time function for the edge corresponds to waiting until the edge opens up at $\tend(e)$.
+With the model from~\cite{strasser:OASIcs:2017:7897}, the combined function would decrease from $\infty$ towards the predicted function but would never reach it and thus stay completely blocked.
+Second, in our model, we use $\max(\pred(e, \tau), \live(e))$, while the authors of~\cite{strasser:OASIcs:2017:7897} use $\max(\pred_{\min}(e), \live(e))$, i.e.\ our model does not allow the live travel time to be less than the predicted travel time.
 While this is a significant restriction from a theoretical perspective, there are good reasons why this is a valid modeling assumption for practical purposes.
 First, the assumption is realistic.
 Live traffic should account for unexpected traffic events.
@@ -888,28 +924,29 @@ In this section, we analyze correctness properties for time-dependent A* potenti
 Here, it is often more practical to use arrival time functions instead of travel time functions.
 Given a travel time function $w$, we denote the respective arrival time function as $\hat{w}(uv, \tau) := w(uv, \tau) + \tau$.
 With arrival time functions, we can represent path lengths simply as the composition of the arrival time functions of the individual edges.
+We use $(f \circ g)(x) = f(g(x))$ to denote the function composition.
 
 Similarly to the time-independent case, we can define a modified weight function $w'$ such that running A* on the graph $G$ with weights $w$ with a time-dependent potential $\pi_t$ is equivalent to running Dijkstra's algorithm on $G$ with modified weights $w'$.
 Consider a vertex $u$ with an arrival time of $\tau$.
 In A*, its queue key is $\tau' = \pi_t(u, \tau) + \tau = \hat{\pi}_t(u, \tau)$.
 For the equivalent run of Dijkstra's algorithm, we want the distances to equal these queue keys.
-Therefore, the reduced weight function of edge $uv$ must compose the original function with the potential at the head vertex $v$, i.e.\ $\hat{\pi}_t(v, \hat{w}(uv, \tau))$.
+Therefore, the reduced weight function of edge $uv$ must compose the original function with the potential at the head vertex $v$, i.e.\ $\hat{\pi}_t(v, \hat{w}(uv, \tau)) = (\hat{\pi}_t(v) \circ \hat{w}(uv))(\tau)$.
 However, the input of $w$ is a time $\tau$, not the A* queue key $\tau' = \hat{\pi}_t(u, \tau)$.
 To first go back from $\tau'$ to $\tau$, we also need to compose this with the inverted potential function $\hat{\pi}_t(u)^{-1}$.
-Thus, the modified weight $\hat{w}'$ are defined as $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau')))$.
+Thus, the modified weight $\hat{w}'$ are defined as $\hat{w}'(uv, \tau') = \hat{\pi}_t(v, \hat{w}(uv, \hat{\pi}_t(u)^{-1}(\tau'))) = (\hat{\pi}_t(v) \circ \hat{w}(uv) \circ \hat{\pi}_t(u)^{-1})(\tau')$.
 
 For $\hat{\pi}_t(u)^{-1}$ to be well-defined, we need $\tau_1 \neq \tau_2 \implies \hat{\pi}_t(\tau_1) \neq \hat{\pi}_t(\tau_2)$.
 Therefore, for potentials, we require the \emph{strong First-In First-Out} property:
 \[
 \pi_t(v, \tau) < \pi_t(v, \tau + \epsilon) + \epsilon, v \in V, \epsilon > 0
 \]
-Note that potentials that only adhere to the regular FIFO property likely work just as well in practice.
+Note that potentials that only adhere to the regular FIFO property might also work in practice.
 However, in this case, the modified weights for a theoretically equivalent run of Dijkstra's algorithm are not well-defined anymore.
 This breaks the following correctness argument.
-Nevertheless, it appears likely that a more sophisticated analysis could work around this problem.
+Nevertheless, a more sophisticated analysis could probably work around this problem.
 
 Shortest paths for the modified weights $w'$ are the same as with the original weights $w$.
-Consider a path $P = (s,v_1,\dots,v_k,t)$ and let $(f \circ g)(x) = f(g(x))$ denote the function composition.
+Consider a path $P = (s,v_1,\dots,v_k,t)$.
 By definition, the arrival time function of a path is
 \[
 \hat{w}'(P) = \hat{\pi}_t(t) \circ \hat{w}(v_k t) \circ \hat{\pi}_t(v_k)^{-1}
@@ -920,7 +957,7 @@ Note that all the inner potential evaluations cancel out.
 Besides the initial and final potential evaluations, only the composition of the original weights remains.
 Now consider the modified weights of two different $s$-$t$ paths.
 With a fixed departure, the initial inverted potential at $s$ is the same for both paths.
-Then, the original weights determine which path is shorter.
+Thus, the original weights determine which path is shorter.
 The final potential evaluation at $t$ cannot change the relative order due to the FIFO property.
 Therefore, shortest paths for $w'$ are the same as for $w$.
 

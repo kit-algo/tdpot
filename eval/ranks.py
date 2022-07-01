@@ -31,7 +31,7 @@ g = sns.boxplot(data=queries.loc[lambda x: x['graph'].str.contains('ptv')].query
                 showmeans=False, linewidth=0.8, flierprops=dict(marker='o', markerfacecolor='none', markeredgewidth=0.3))
 g.set_yscale('log')
 handles, labels = g.get_legend_handles_labels()
-g.legend(handles=handles, labels=['CCH Potential', 'MMP', 'IMP'])
+g.legend(handles=handles, labels=['CCH Potentials', 'MMP', 'IMP'])
 g.set_ylabel('Running Time [ms]')
 g.set_xlabel('Rank')
 g.yaxis.set_major_locator(mpl.ticker.LogLocator(base=10,numticks=10))
