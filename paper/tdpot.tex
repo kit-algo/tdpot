@@ -501,11 +501,11 @@ With these arrival intervals, we can now compute lower bounds to the target with
 The first step is to run Dijkstra's algorithm from $t$ on $\gchd$.
 To relax an edge $uv \in \rechd$, we first need to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $v$ using AILR.
 This allows us to determine for $vu$ at the relevant time a tight lower bound $d := \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(vu, \tau)$.
-Then, we check if we can improve the lower bound from $v$ to $t$, i.e.\ $\mathtt{D}^{\downarrow}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}^{\downarrow}[u] + d)$.
+Then, we check if we can improve the lower bound from $v$ to $t$, i.e.\ $\mathtt{D}[v] \leftarrow \min(\mathtt{D}^{\downarrow}[v], \mathtt{D}[u] + d)$.
 Having established preliminary backward distances for all vertices in the CH search space of $t$, we can now compute estimates with the recursive distance-memoizing DFS.
-To obtain a distance estimate for vertex $u$, we first recursively compute distance estimates $\mathtt{D}^{\downarrow}[v]$ for all upward neighbors $v$ where $uv \in \echu$.
+To obtain a distance estimate for vertex $u$, we first recursively compute distance estimates $\mathtt{D}[v]$ for all upward neighbors $v$ where $uv \in \echu$.
 Then, we use AILR to obtain an arrival interval $[\tau_{\min}, \tau_{\max}]$ at $u$.
-Finally, we relax the upward edges $uv$ set $\mathtt{D}^{\downarrow}[u] \leftarrow \min(\mathtt{D}^{\downarrow}[u], \mathtt{D}^{\downarrow}[v] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(uv, \tau))$.
+Finally, we relax the upward edges $uv$ set $\mathtt{D}[u] \leftarrow \min(\mathtt{D}^{\downarrow}[u], \mathtt{D}[v] + \min_{\tau \in [\tau_{\min}, \tau_{\max}]} \pcfn(uv, \tau))$.
 This yields the final estimate for $u$.
 
 Choosing a good memory layout for the bucket weights is crucial for the performance.
