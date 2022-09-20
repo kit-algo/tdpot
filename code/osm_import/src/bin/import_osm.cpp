@@ -173,10 +173,12 @@ int main(int argc, char*argv[]){
 
         arc_count = head.size();
 
+        std::vector<unsigned>new_to_cleaned_arc(arc_count);
         if(arc_count != 0)
         {
                 unsigned out = 1;
                 for(unsigned in = 1; in < arc_count; ++in){
+                        new_to_cleaned_arc[in] = out;
                         if(tail[in-1] != tail[in] || head[in-1] != head[in]){
                                 tail[out] = tail[in];
                                 head[out] = head[in];
@@ -205,6 +207,17 @@ int main(int argc, char*argv[]){
         latitude = keep_element_of_vector_if(node_in_largest_scc, latitude);
         longitude = keep_element_of_vector_if(node_in_largest_scc, longitude);
         node_ids = keep_element_of_vector_if(node_in_largest_scc, node_ids);
+
+        std::vector<unsigned>forbidden_turn_from_arc, forbidden_turn_to_arc;
+
+        for(unsigned i=0; i<routing_graph.forbidden_turn_from_arc.size(); ++i){
+                unsigned from = old_to_new_arc[routing_graph.forbidden_turn_from_arc[i]];
+                unsigned to = old_to_new_arc[routing_graph.forbidden_turn_to_arc[i]];
+                if(from != invalid_id && to != invalid_id){
+                        forbidden_turn_from_arc.push_back(new_to_cleaned_arc[from]);
+                        forbidden_turn_to_arc.push_back(new_to_cleaned_arc[to]);
+                }
+        }
 
 	save_vector("first_out", first_out);
 	save_vector("head", head);
